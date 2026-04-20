@@ -6,6 +6,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
       },
       colors: {
         accent: {
