@@ -5,7 +5,7 @@ import Practice from './pages/Practice';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-stone-50 text-zinc-950 font-sans antialiased pb-12">
+    <div className="min-h-screen bg-stone-50 text-zinc-950 font-sans antialiased">
       <nav className="sticky top-0 z-40 bg-stone-50 border-b-2 border-zinc-950">
         <div className="max-w-7xl mx-auto h-20 flex items-center justify-between px-6">
           <Link to="/" className="flex items-center gap-4">

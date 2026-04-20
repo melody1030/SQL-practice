@@ -9,7 +9,7 @@ A browser-based SQL practice app. Two modes — **coding quiz** (real SQL execut
 ## Stack
 
 - **React 18 + Vite + TypeScript**
-- **Tailwind CSS v3** for styling. Color palette is intentionally minimal: `neutral-*` for surfaces/text, single `accent` color (indigo) for interactive elements, `emerald/amber/rose` only for difficulty pills and correct/wrong states. Two fonts: **Inter** (UI) + **JetBrains Mono** (code).
+- **Tailwind CSS v3** for styling. Brutalist / technical aesthetic: `stone-50` canvas, `zinc-950` ink, 2px black borders as the primary structural device, no rounded corners, no shadows. Accent is `blue-700` on hover/focus. `emerald-600` / `red-600` reserved for pass/fail states only. Three fonts: **Inter** (UI, weights 700/900), **JetBrains Mono** (code + technical labels, uppercase with wide tracking), **Instrument Serif** (question prompts + hero subtitle, italic serif for prose contrast against the mono/sans UI).
 - **sql.js** — SQLite compiled to WebAssembly. Loaded from `https://sql.js.org/dist/` via `initSqlJs({ locateFile })`. See `src/db/sqlEngine.ts`.
 - **@uiw/react-codemirror** + `@codemirror/lang-sql` for the SQL editor.
 - **Firebase** (planned): Auth (Google) + Firestore (progress + user-generated questions) + Hosting.
@@ -34,19 +34,24 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
   2. Applies `schemaSql` (CREATE + INSERT).
   3. Runs `expectedSql` to derive the reference output (so question authors don't have to hand-encode rows).
   4. Runs the user's query, compares column count + row count + cell values. If `orderMatters` is false, both sides are sorted before comparison.
-- `src/pages/Home.tsx` — filter bar (difficulty, type) + question list. Uses `seedQuestions` directly; will merge in Firestore-stored generated questions later.
+- `src/pages/Home.tsx` — hero + sticky filter bar (text search, type segmented control, difficulty segmented control, concept chips) + dense responsive card grid (1/2/3 columns). `MODULES_LOADED` progress bar reflects filtered-count / total. Uses `seedQuestions` directly; will merge in Firestore-stored generated questions later.
 - `src/pages/Practice.tsx` — routes to `CodingQuiz` or `MultipleChoice` based on `question.type`.
+- `src/components/CodingQuiz.tsx` — fixed-viewport split: briefing (left, internally scrolling) with schema preview + optional DDL reveal + hint; editor + runtime output (right). Success state swaps in a green banner + result table with `NEXT_MODULE`.
+- `src/components/MultipleChoice.tsx` — full-width serif prompt at top; options in a 1×N stack on the left, explanation / `[AWAITING_SELECTION]` placeholder sticky on the right. Option text is rendered in its original case (SQL keywords stay uppercase, prose stays prose).
+- `src/components/Markdown.tsx` — inline mini-markdown (`**bold**`, `` `code` ``). `serif` mode renders inline code as italic serif blue-900 so it flows inside serif prompts without breaking the line.
 
 ## Conventions
 
 - SQL dialect is **SQLite** (what sql.js supports). When writing new questions, test them against SQLite syntax specifically — no `TOP`, no `DATEADD`, use `LIMIT`, `date()`, etc.
 - Every question must have a `difficulty` and at least one `concepts[]` tag. Keep tag names identical to the `Concept` union in `schema.ts`.
 - For coding questions, prefer writing `expectedSql` rather than hard-coded expected rows — this keeps schemas and expected output in sync if seed data changes.
-- Max 3 font weights in UI (400, 500, 700). No shadows beyond `shadow-sm`. Rounded: `rounded-lg` or `rounded-xl`.
+- Typography weights: 400 (serif prose), 700 (bold labels), 900 (headings, technical labels). No shadows. No rounded corners — edges are sharp to reinforce the brutalist grid. Borders are 2px `zinc-950`; hairline dividers are `border-zinc-200`.
+- Technical labels (section headings, metadata rows) are `font-black uppercase tracking-[0.3em]` in mono — treat them as UI chrome, not content.
+- Question titles render as-is (human title case) in cards and headers. Do not force-uppercase or underscore-join them — the earlier `TITLE_LIKE_THIS` treatment was abandoned because it broke overflow and readability.
 
 ## Current milestone
 
-**Milestone 1: scaffold + seed** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, no Firebase yet.
+**Milestone 1: scaffold + seed + styled UI** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, brutalist theme applied across Home / CodingQuiz / MultipleChoice, Home has search + filter chips + dense card grid. No Firebase yet.
 
 ## Next milestones
 

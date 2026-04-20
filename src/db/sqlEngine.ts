@@ -60,6 +60,45 @@ function compare(user: QueryResult, expected: QueryResult, orderMatters: boolean
   return true;
 }
 
+export interface TablePreview {
+  name: string;
+  columns: string[];
+  rows: (string | number | null)[][];
+  createSql: string;
+}
+
+export async function previewSchema(schemaSql: string): Promise<TablePreview[]> {
+  const SQL = await getSql();
+  const db = new SQL.Database();
+  try {
+    db.exec(schemaSql);
+    const tablesRes = db.exec(
+      "SELECT name, sql FROM sqlite_master WHERE type='table' ORDER BY name",
+    );
+    if (tablesRes.length === 0) return [];
+    const tables = tablesRes[0].values as [string, string][];
+    const previews: TablePreview[] = [];
+    for (const [name, createSql] of tables) {
+      const r = db.exec(`SELECT * FROM "${name}"`);
+      if (r.length === 0) {
+        previews.push({ name, columns: [], rows: [], createSql });
+      } else {
+        previews.push({
+          name,
+          columns: r[0].columns,
+          rows: r[0].values.map((row) =>
+            row.map((v) => (v === null || v === undefined ? null : (v as any))),
+          ),
+          createSql,
+        });
+      }
+    }
+    return previews;
+  } finally {
+    db.close();
+  }
+}
+
 export async function runCoding(
   schemaSql: string,
   userSql: string,
