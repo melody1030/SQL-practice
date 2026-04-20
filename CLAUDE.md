@@ -59,6 +59,8 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 - Quiz components write progress: `CodingQuiz.onRun` records `solved` on pass / `wrong` on runtime error / `attempted` on mismatch; `MultipleChoice.check` records `solved` or `wrong`. Both are silent no-ops when signed out, so the app stays fully functional without Firebase.
 - Home adds a `TODO / DONE` status segmented control, a green `MODULES_SOLVED` progress bar alongside the filter-match bar, and per-card `DONE` badges + attempt counters.
 - Env template in `.env.example`; TypeScript types for `import.meta.env` in `src/vite-env.d.ts`.
+- `src/lib/syncStatus.ts` — tiny `useSyncExternalStore`-backed store for the last progress-sync event (`idle | pending | ok | error`). `recordAttempt` emits on each write; `SyncIndicator` in the nav renders `SYNC: OK` / `SYNC: <err>` with a hover title for the full message. Added after a debugging session where permission-denied rule errors and ad-blocker `ERR_BLOCKED_BY_CLIENT` failures were silently swallowed by `console.warn`; now the UI surfaces them in real time.
+- `firebase.ts` logs once at startup in dev (`[firebase] configured — project=… authDomain=…`) so env-not-loaded is obvious in the console.
 
 **Milestone 1: scaffold + seed + styled UI** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, brutalist theme applied across Home / CodingQuiz / MultipleChoice, Home has search + filter chips + dense card grid.
 
@@ -88,6 +90,13 @@ service cloud.firestore {
 2. Enable Google provider in Firebase Authentication → Sign-in method.
 3. Create a Firestore database in production mode with the rules above.
 4. `npm run dev` — the nav will switch from `AUTH.OFFLINE` to `SIGN_IN`.
+
+## Troubleshooting sync
+
+If the `SyncIndicator` in the nav shows `SYNC: <err>`:
+- **"Missing or insufficient permissions"** — the Firestore rules weren't published, or the default `allow read, write: if false;` is still active. Re-publish the rules above.
+- **`ERR_BLOCKED_BY_CLIENT`** (visible in DevTools network tab on `firestore.googleapis.com`) — an ad/tracker blocker (uBlock Origin, Brave Shields, Privacy Badger, etc.) is cancelling the Firestore request before it leaves the browser. Allowlist `firestore.googleapis.com`, `firebaseinstallations.googleapis.com`, and `identitytoolkit.googleapis.com` for localhost.
+- **`AUTH.OFFLINE` still showing after editing `.env.local`** — Vite reads env only at startup. Stop and restart `npm run dev`.
 
 ## Update policy
 

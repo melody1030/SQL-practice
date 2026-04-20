@@ -18,6 +18,19 @@ const config = {
 
 export const firebaseConfigured = Boolean(config.apiKey && config.projectId);
 
+if (import.meta.env.DEV) {
+  // Surface config state once at startup so the console is explicit about it.
+  if (firebaseConfigured) {
+    console.info(
+      `[firebase] configured — project=${config.projectId} authDomain=${config.authDomain}`,
+    );
+  } else {
+    console.warn(
+      '[firebase] NOT configured — populate .env.local with VITE_FIREBASE_* and restart `npm run dev`',
+    );
+  }
+}
+
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;

@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { firebaseConfigured, getFirebase } from './firebase';
 import { useAuth } from './auth';
+import { setSyncStatus } from './syncStatus';
 import type { ProgressEntry } from '../questions/schema';
 
 /**
@@ -64,21 +65,58 @@ export async function recordAttempt(
   lastAnswer: string | undefined,
   prevAttempts: number,
 ): Promise<void> {
-  if (!firebaseConfigured || !uid) return;
-  const { db } = getFirebase();
-  const ref = doc(db, 'users', uid, 'progress', questionId);
-  await setDoc(
-    ref,
-    {
+  if (!firebaseConfigured) {
+    console.warn(
+      '[progress] skipped: Firebase not configured — populate .env.local and restart `npm run dev`',
+    );
+    setSyncStatus({
+      kind: 'error',
       questionId,
-      // Never downgrade a solved question back to attempted/wrong.
-      status,
-      attempts: prevAttempts + 1,
-      lastAnswer: lastAnswer ?? null,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+      message: 'Firebase not configured',
+      at: Date.now(),
+    });
+    return;
+  }
+  if (!uid) {
+    console.warn('[progress] skipped: not signed in (SIGN_IN in nav)');
+    setSyncStatus({
+      kind: 'error',
+      questionId,
+      message: 'Not signed in',
+      at: Date.now(),
+    });
+    return;
+  }
+
+  setSyncStatus({ kind: 'pending', questionId });
+  try {
+    const { db } = getFirebase();
+    const ref = doc(db, 'users', uid, 'progress', questionId);
+    await setDoc(
+      ref,
+      {
+        questionId,
+        // "solved" should already be sticky from mergeStatus(); enforce here too.
+        status,
+        attempts: prevAttempts + 1,
+        lastAnswer: lastAnswer ?? null,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    console.info(
+      `[progress] wrote users/${uid}/progress/${questionId} status=${status} attempts=${
+        prevAttempts + 1
+      }`,
+    );
+    setSyncStatus({ kind: 'ok', questionId, at: Date.now() });
+  } catch (err) {
+    const message =
+      err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    console.error('[progress] write failed', err);
+    setSyncStatus({ kind: 'error', questionId, message, at: Date.now() });
+    throw err;
+  }
 }
 
 /** Convenience: decide the new status, respecting "solved is sticky". */

@@ -1,8 +1,17 @@
 import { Link, Route, Routes } from 'react-router-dom';
-import { Activity, Cpu, LogIn, LogOut } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  Cpu,
+  Loader2,
+  LogIn,
+  LogOut,
+} from 'lucide-react';
 import Home from './pages/Home';
 import Practice from './pages/Practice';
 import { useAuth } from './lib/auth';
+import { useSyncStatus } from './lib/syncStatus';
 
 export default function App() {
   return (
@@ -31,6 +40,7 @@ export default function App() {
               <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                 <Cpu size={14} /> CORE: v0.1.0
               </div>
+              <SyncIndicator />
             </div>
             <AuthButton />
           </div>
@@ -59,6 +69,40 @@ export default function App() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function SyncIndicator() {
+  const status = useSyncStatus();
+  if (status.kind === 'idle') {
+    return (
+      <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-zinc-400">
+        <div className="h-1.5 w-1.5 bg-zinc-300"></div> SYNC: IDLE
+      </div>
+    );
+  }
+  if (status.kind === 'pending') {
+    return (
+      <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-zinc-600">
+        <Loader2 size={12} className="animate-spin" /> SYNC…
+      </div>
+    );
+  }
+  if (status.kind === 'ok') {
+    return (
+      <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-emerald-700">
+        <Check size={12} strokeWidth={3} /> SYNC: OK
+      </div>
+    );
+  }
+  return (
+    <div
+      title={status.message}
+      className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-red-600 max-w-[220px]"
+    >
+      <AlertTriangle size={12} />
+      <span className="truncate">SYNC: {status.message}</span>
     </div>
   );
 }
