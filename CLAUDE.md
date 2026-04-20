@@ -51,13 +51,43 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 
 ## Current milestone
 
-**Milestone 1: scaffold + seed + styled UI** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, brutalist theme applied across Home / CodingQuiz / MultipleChoice, Home has search + filter chips + dense card grid. No Firebase yet.
+**Milestone 2: Firebase Auth + progress sync** — Done.
+- `src/lib/firebase.ts` — singleton init gated by `firebaseConfigured` (true when `VITE_FIREBASE_API_KEY` + `VITE_FIREBASE_PROJECT_ID` are set). Safe to import even when env is missing; `getFirebase()` throws only if called.
+- `src/lib/auth.tsx` — `<AuthProvider>` + `useAuth()`, Google popup sign-in, `onAuthStateChanged` subscription. Wraps the tree in `main.tsx` above `<BrowserRouter>`.
+- `src/lib/progress.ts` — Firestore layout `users/{uid}/progress/{questionId}`. `useProgress()` returns a live `ProgressMap`; `recordAttempt()` merge-writes with `serverTimestamp()`; `mergeStatus()` keeps "solved" sticky so a later wrong attempt can't demote it.
+- Auth UI lives in `App.tsx` (`AuthButton`): shows `AUTH.OFFLINE` when unconfigured, `SIGN_IN` when signed out, avatar + `SIGN_OUT` when signed in.
+- Quiz components write progress: `CodingQuiz.onRun` records `solved` on pass / `wrong` on runtime error / `attempted` on mismatch; `MultipleChoice.check` records `solved` or `wrong`. Both are silent no-ops when signed out, so the app stays fully functional without Firebase.
+- Home adds a `TODO / DONE` status segmented control, a green `MODULES_SOLVED` progress bar alongside the filter-match bar, and per-card `DONE` badges + attempt counters.
+- Env template in `.env.example`; TypeScript types for `import.meta.env` in `src/vite-env.d.ts`.
+
+**Milestone 1: scaffold + seed + styled UI** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, brutalist theme applied across Home / CodingQuiz / MultipleChoice, Home has search + filter chips + dense card grid.
 
 ## Next milestones
 
-2. Firebase Auth + Firestore for progress sync (per-user `users/{uid}/progress/{qid}`).
-3. Gemini question generation — user enters API key in Settings, stored in Firestore. Generated questions validated by running their `schemaSql` + `expectedSql` before being added to the pool.
-4. Firebase Hosting deploy.
+3. Gemini question generation — user enters API key in Settings, stored in Firestore (`users/{uid}/settings.geminiKey`). Generated questions validated by running their `schemaSql` + `expectedSql` through `runCoding` before being added to the pool, then persisted to `users/{uid}/generated/{id}`.
+4. Firebase Hosting deploy — wire `npm run deploy`, confirm env-var injection at build time, publish.
+
+## Firestore rules (to configure in Firebase console)
+
+Users should only read/write their own subtree:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
+```
+
+## Local setup for Firebase
+
+1. Copy `.env.example` → `.env.local` and paste values from Firebase console (Project settings → General → SDK setup & config).
+2. Enable Google provider in Firebase Authentication → Sign-in method.
+3. Create a Firestore database in production mode with the rules above.
+4. `npm run dev` — the nav will switch from `AUTH.OFFLINE` to `SIGN_IN`.
 
 ## Update policy
 

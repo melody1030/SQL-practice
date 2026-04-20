@@ -1,7 +1,8 @@
 import { Link, Route, Routes } from 'react-router-dom';
-import { Activity, Cpu, Plus } from 'lucide-react';
+import { Activity, Cpu, LogIn, LogOut } from 'lucide-react';
 import Home from './pages/Home';
 import Practice from './pages/Practice';
+import { useAuth } from './lib/auth';
 
 export default function App() {
   return (
@@ -31,13 +32,7 @@ export default function App() {
                 <Cpu size={14} /> CORE: v0.1.0
               </div>
             </div>
-            <button
-              disabled
-              title="Generative AI coming soon (milestone 5)"
-              className="flex items-center gap-3 bg-zinc-950 text-stone-50 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all disabled:opacity-30"
-            >
-              <Plus size={14} /> NEW.LAB
-            </button>
+            <AuthButton />
           </div>
         </div>
       </nav>
@@ -64,6 +59,65 @@ export default function App() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function AuthButton() {
+  const { user, loading, configured, signIn, signOut } = useAuth();
+
+  if (!configured) {
+    return (
+      <button
+        disabled
+        title="Set VITE_FIREBASE_* in .env.local to enable auth"
+        className="flex items-center gap-3 bg-zinc-950 text-stone-50 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-30"
+      >
+        <LogIn size={14} /> AUTH.OFFLINE
+      </button>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">
+        AUTH.SYNC…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <button
+        onClick={() => {
+          void signIn();
+        }}
+        className="flex items-center gap-3 bg-zinc-950 text-stone-50 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all"
+      >
+        <LogIn size={14} /> SIGN_IN
+      </button>
+    );
+  }
+
+  const initial =
+    (user.displayName || user.email || '?').charAt(0).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        title={user.email ?? user.displayName ?? 'signed in'}
+        className="h-8 w-8 bg-zinc-950 text-stone-50 flex items-center justify-center text-[11px] font-black"
+      >
+        {initial}
+      </div>
+      <button
+        onClick={() => {
+          void signOut();
+        }}
+        className="flex items-center gap-2 border-2 border-zinc-950 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-zinc-950 hover:text-stone-50 transition-colors"
+      >
+        <LogOut size={12} /> SIGN_OUT
+      </button>
     </div>
   );
 }

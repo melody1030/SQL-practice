@@ -1,18 +1,33 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Code2, HelpCircle, Search, X } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Check,
+  Code2,
+  HelpCircle,
+  Search,
+  X,
+} from 'lucide-react';
 import { seedQuestions } from '../questions/seed';
 import TechnicalBadge from '../components/TechnicalBadge';
+import { useProgress, type ProgressMap } from '../lib/progress';
 import type { Concept, Difficulty, Question } from '../questions/schema';
 
 type TypeFilter = 'all' | 'coding' | 'mcq';
 type DiffFilter = 'all' | Difficulty;
+type StatusFilter = 'all' | 'solved' | 'unsolved';
 
 export default function Home() {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [diffFilter, setDiffFilter] = useState<DiffFilter>('all');
   const [conceptFilter, setConceptFilter] = useState<Concept | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const progress = useProgress();
+  const solvedCount = useMemo(
+    () => Object.values(progress).filter((p) => p.status === 'solved').length,
+    [progress],
+  );
 
   const conceptsInUse = useMemo(() => {
     const set = new Set<Concept>();
@@ -27,6 +42,11 @@ export default function Home() {
       if (diffFilter !== 'all' && item.difficulty !== diffFilter) return false;
       if (conceptFilter !== 'all' && !item.concepts.includes(conceptFilter))
         return false;
+      if (statusFilter !== 'all') {
+        const solved = progress[item.id]?.status === 'solved';
+        if (statusFilter === 'solved' && !solved) return false;
+        if (statusFilter === 'unsolved' && solved) return false;
+      }
       if (q) {
         const hay = (
           item.title +
@@ -39,7 +59,7 @@ export default function Home() {
       }
       return true;
     });
-  }, [query, typeFilter, diffFilter, conceptFilter]);
+  }, [query, typeFilter, diffFilter, conceptFilter, statusFilter, progress]);
 
   const total = seedQuestions.length;
   const shown = filtered.length;
@@ -47,13 +67,15 @@ export default function Home() {
     query !== '' ||
     typeFilter !== 'all' ||
     diffFilter !== 'all' ||
-    conceptFilter !== 'all';
+    conceptFilter !== 'all' ||
+    statusFilter !== 'all';
 
   function resetFilters() {
     setQuery('');
     setTypeFilter('all');
     setDiffFilter('all');
     setConceptFilter('all');
+    setStatusFilter('all');
   }
 
   return (
@@ -72,10 +94,24 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="pt-8 border-t border-zinc-200">
+        <div className="pt-8 border-t border-zinc-200 space-y-3">
           <div className="flex items-center gap-4">
             <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[100px]">
-              MODULES_LOADED
+              MODULES_SOLVED
+            </div>
+            <div className="h-2 bg-stone-200 flex-1 overflow-hidden">
+              <div
+                className="h-full bg-emerald-600 transition-all"
+                style={{ width: `${total > 0 ? (solvedCount / total) * 100 : 0}%` }}
+              ></div>
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 tabular-nums">
+              {solvedCount.toString().padStart(2, '0')} / {total.toString().padStart(2, '0')}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[100px]">
+              FILTER_MATCH
             </div>
             <div className="h-2 bg-stone-200 flex-1 overflow-hidden">
               <div
@@ -133,6 +169,16 @@ export default function Home() {
                 { value: 'hard', label: 'HARD' },
               ]}
             />
+
+            <SegmentedControl
+              value={statusFilter}
+              onChange={(v) => setStatusFilter(v as StatusFilter)}
+              options={[
+                { value: 'all', label: 'ALL' },
+                { value: 'unsolved', label: 'TODO' },
+                { value: 'solved', label: 'DONE' },
+              ]}
+            />
           </div>
 
           {/* Row 2: concept chips */}
@@ -184,7 +230,7 @@ export default function Home() {
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 border-t-2 border-l-2 border-zinc-950">
             {filtered.map((q, i) => (
-              <QuestionCard key={q.id} q={q} index={i} />
+              <QuestionCard key={q.id} q={q} index={i} progress={progress} />
             ))}
           </ul>
         )}
@@ -193,10 +239,25 @@ export default function Home() {
   );
 }
 
-function QuestionCard({ q, index }: { q: Question; index: number }) {
+function QuestionCard({
+  q,
+  index,
+  progress,
+}: {
+  q: Question;
+  index: number;
+  progress: ProgressMap;
+}) {
   const Icon = q.type === 'coding' ? Code2 : HelpCircle;
+  const entry = progress[q.id];
+  const solved = entry?.status === 'solved';
+  const attempted = !!entry && !solved;
   return (
-    <li className="bg-stone-50 border-r-2 border-b-2 border-zinc-950">
+    <li
+      className={`border-r-2 border-b-2 border-zinc-950 ${
+        solved ? 'bg-emerald-50' : 'bg-stone-50'
+      }`}
+    >
       <Link
         to={`/practice/${q.id}`}
         className="group flex flex-col h-full p-5 lg:p-6 hover:bg-white transition-colors"
@@ -208,7 +269,19 @@ function QuestionCard({ q, index }: { q: Question; index: number }) {
             <span className="text-zinc-300">/</span>
             <span>[{String(index + 1).padStart(2, '0')}]</span>
           </div>
-          <TechnicalBadge type={q.difficulty}>{q.difficulty}</TechnicalBadge>
+          <div className="flex items-center gap-2">
+            {solved && (
+              <span className="inline-flex items-center gap-1 bg-emerald-600 text-stone-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                <Check size={10} strokeWidth={4} /> DONE
+              </span>
+            )}
+            {attempted && (
+              <span className="inline-flex items-center bg-zinc-950/10 text-zinc-700 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                ×{entry!.attempts}
+              </span>
+            )}
+            <TechnicalBadge type={q.difficulty}>{q.difficulty}</TechnicalBadge>
+          </div>
         </div>
 
         <div className="flex items-start justify-between gap-3 flex-1">

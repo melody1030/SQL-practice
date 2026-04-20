@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { AlertCircle, Check, Trophy, X } from 'lucide-react';
 import TechnicalBadge from './TechnicalBadge';
 import Markdown from './Markdown';
+import { useAuth } from '../lib/auth';
+import { mergeStatus, recordAttempt, useProgress } from '../lib/progress';
 import type { MCQQuestion } from '../questions/schema';
 
 export default function MultipleChoice({
@@ -13,6 +15,8 @@ export default function MultipleChoice({
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const { user } = useAuth();
+  const progress = useProgress();
 
   const correct = submitted && picked === question.correctOptionId;
   const correctOpt = question.options.find(
@@ -23,6 +27,16 @@ export default function MultipleChoice({
     if (submitted) return;
     setPicked(optId);
     setSubmitted(true);
+    const passed = optId === question.correctOptionId;
+    const prev = progress[question.id];
+    const nextStatus = mergeStatus(prev?.status, passed ? 'solved' : 'wrong');
+    void recordAttempt(
+      user?.uid,
+      question.id,
+      nextStatus,
+      optId,
+      prev?.attempts ?? 0,
+    ).catch((err) => console.warn('recordAttempt failed', err));
   }
 
   return (

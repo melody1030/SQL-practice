@@ -11,6 +11,8 @@ import {
 import TechnicalBadge from './TechnicalBadge';
 import Markdown from './Markdown';
 import SchemaTable from './SchemaTable';
+import { useAuth } from '../lib/auth';
+import { mergeStatus, recordAttempt, useProgress } from '../lib/progress';
 import type { CodingQuestion } from '../questions/schema';
 
 export default function CodingQuiz({
@@ -25,6 +27,8 @@ export default function CodingQuiz({
   const [running, setRunning] = useState(false);
   const [tables, setTables] = useState<TablePreview[]>([]);
   const [showSchemaSql, setShowSchemaSql] = useState(false);
+  const { user } = useAuth();
+  const progress = useProgress();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +50,26 @@ export default function CodingQuiz({
     );
     setOutcome(r);
     setRunning(false);
+
+    // Record the attempt. Silent no-op when signed out or Firebase unconfigured.
+    const passed = !!(r.ok && r.match);
+    const prev = progress[question.id];
+    const nextStatus = mergeStatus(
+      prev?.status,
+      passed ? 'solved' : r.ok ? 'wrong' : 'attempted',
+    );
+    try {
+      await recordAttempt(
+        user?.uid,
+        question.id,
+        nextStatus,
+        code,
+        prev?.attempts ?? 0,
+      );
+    } catch (err) {
+      // Non-fatal — progress sync should never block practice.
+      console.warn('recordAttempt failed', err);
+    }
   }
 
   const success = !!(outcome?.ok && outcome.match);
