@@ -1,31 +1,67 @@
 import { Link, Route, Routes } from 'react-router-dom';
+import { Activity, Cpu, Plus } from 'lucide-react';
 import Home from './pages/Home';
 import Practice from './pages/Practice';
 
 export default function App() {
   return (
-    <div className="min-h-full flex flex-col">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="font-bold text-lg tracking-tight">
-            SQL Practice
+    <div className="min-h-screen bg-stone-50 text-zinc-950 font-sans antialiased pb-12">
+      <nav className="sticky top-0 z-40 bg-stone-50 border-b-2 border-zinc-950">
+        <div className="max-w-7xl mx-auto h-20 flex items-center justify-between px-6">
+          <Link to="/" className="flex items-center gap-4">
+            <div className="h-6 w-6 bg-zinc-950 flex items-center justify-center">
+              <div className="h-2 w-2 bg-stone-50"></div>
+            </div>
+            <div>
+              <h1 className="font-black text-sm uppercase tracking-[0.4em] leading-none">
+                SQL.PRACTICE_HUB
+              </h1>
+              <p className="text-[9px] font-bold text-zinc-400 mt-1 uppercase tracking-widest">
+                WASM_ENGINE_ACTIVE
+              </p>
+            </div>
           </Link>
-          <nav className="text-sm text-neutral-600">
-            <Link to="/" className="hover:text-neutral-900">
-              Questions
-            </Link>
-          </nav>
+
+          <div className="flex items-center gap-10">
+            <div className="hidden md:flex gap-8">
+              <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                <Activity size={14} /> LATENCY: 0.2ms
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                <Cpu size={14} /> CORE: v0.1.0
+              </div>
+            </div>
+            <button
+              disabled
+              title="Generative AI coming soon (milestone 5)"
+              className="flex items-center gap-3 bg-zinc-950 text-stone-50 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all disabled:opacity-30"
+            >
+              <Plus size={14} /> NEW.LAB
+            </button>
+          </div>
         </div>
-      </header>
-      <main className="flex-1">
+      </nav>
+
+      <main className="max-w-7xl mx-auto">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/practice/:id" element={<Practice />} />
         </Routes>
       </main>
-      <footer className="border-t border-neutral-200 text-xs text-neutral-500">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          Runs SQLite in your browser via sql.js.
+
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950 h-10 border-t border-zinc-800 text-stone-50/40">
+        <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.4em]">
+          <div className="flex items-center gap-10">
+            <span>KERNEL: RUNNING</span>
+            <div className="hidden sm:flex items-center gap-4">
+              <div className="h-1.5 w-1.5 bg-emerald-500"></div>
+              <span>READY</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-10">
+            <span>SQL_PRACTICE_HUB_v0.1.0</span>
+            <span className="hidden sm:inline">SQLITE.WASM_RUNTIME</span>
+          </div>
         </div>
       </footer>
     </div>
