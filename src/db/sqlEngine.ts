@@ -1,4 +1,7 @@
-import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
+// Import the CJS build explicitly — the package's `browser` export is UMD
+// without a default ESM export, which breaks Vite's transform.
+import initSqlJs from 'sql.js/dist/sql-wasm.js';
+import type { Database, SqlJsStatic } from 'sql.js';
 
 let sqlPromise: Promise<SqlJsStatic> | null = null;
 
