@@ -124,8 +124,8 @@ export default function CodingQuiz({
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-2">
                 BRIEFING
               </div>
-              <p className="font-serif text-[22px] leading-[1.3] text-zinc-950">
-                <Markdown text={question.prompt} serif />
+              <p className="font-sans text-[17px] leading-[1.55] text-zinc-800">
+                <Markdown text={question.prompt} />
               </p>
             </div>
 
@@ -223,49 +223,19 @@ export default function CodingQuiz({
                   RUNTIME_OUTPUT
                 </span>
               </div>
-              <div className="flex-1 overflow-auto mt-4 min-h-0">
-                {runtimeError ? (
+              <div className="flex-1 overflow-auto mt-4 min-h-0 space-y-4">
+                {(runtimeError || mismatchError) && (
                   <div className="font-mono text-xs font-bold text-red-600 p-4 border-l-4 border-red-600 bg-red-50">
-                    {runtimeError}
+                    {runtimeError ?? mismatchError}
                   </div>
-                ) : mismatchError ? (
-                  <div className="font-mono text-xs font-bold text-red-600 p-4 border-l-4 border-red-600 bg-red-50">
-                    {mismatchError}
-                  </div>
-                ) : rows && rows.columns.length > 0 ? (
-                  <table className="w-full text-left text-[11px] font-mono border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-zinc-950">
-                        {rows.columns.map((c) => (
-                          <th
-                            key={c}
-                            className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
-                          >
-                            {c}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="font-bold text-zinc-700">
-                      {rows.rows.map((row, i) => (
-                        <tr
-                          key={i}
-                          className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
-                        >
-                          {row.map((cell, j) => (
-                            <td key={j} className="py-2 pr-6">
-                              {cell === null ? 'NULL' : String(cell)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
+                )}
+                {rows && rows.columns.length > 0 ? (
+                  <ResultTable rows={rows} />
+                ) : !runtimeError && !mismatchError ? (
                   <div className="h-full flex items-center justify-center text-zinc-200 text-[11px] font-black uppercase tracking-[0.5em] py-8">
                     [AWAITING_INPUT]
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -311,37 +281,41 @@ function SuccessBanner({
         <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-3">
           RUNTIME_OUTPUT
         </div>
-        {rows && rows.columns.length > 0 && (
-          <table className="w-full text-left text-[11px] font-mono border-collapse">
-            <thead>
-              <tr className="border-b-2 border-zinc-950">
-                {rows.columns.map((c) => (
-                  <th
-                    key={c}
-                    className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
-                  >
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="font-bold text-zinc-700">
-              {rows.rows.map((row, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
-                >
-                  {row.map((cell, j) => (
-                    <td key={j} className="py-2 pr-6">
-                      {cell === null ? 'NULL' : String(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        {rows && rows.columns.length > 0 && <ResultTable rows={rows} />}
       </div>
     </div>
+  );
+}
+
+function ResultTable({ rows }: { rows: NonNullable<RunOutcome['user']> }) {
+  return (
+    <table className="w-full text-left text-[11px] font-mono border-collapse">
+      <thead>
+        <tr className="border-b-2 border-zinc-950">
+          {rows.columns.map((c) => (
+            <th
+              key={c}
+              className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
+            >
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="font-bold text-zinc-700">
+        {rows.rows.map((row, i) => (
+          <tr
+            key={i}
+            className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
+          >
+            {row.map((cell, j) => (
+              <td key={j} className="py-2 pr-6">
+                {cell === null ? 'NULL' : String(cell)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

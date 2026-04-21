@@ -1,0 +1,6 @@
+Your goal is to update any vulnerable dependencies
+This audit command does three things:
+
+1. Runs npm audit to find vulnerable installed packages
+2. uns npm audit fix to apply updates
+3. Runs tests to verify the updates didn't break anything

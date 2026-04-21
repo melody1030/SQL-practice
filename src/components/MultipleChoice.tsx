@@ -58,8 +58,8 @@ export default function MultipleChoice({
             <TechnicalBadge key={c}>{c}</TechnicalBadge>
           ))}
         </div>
-        <h2 className="font-serif text-[36px] md:text-[44px] lg:text-[52px] leading-[1.05] text-zinc-950">
-          <Markdown text={question.prompt} serif />
+        <h2 className="font-sans font-bold text-[22px] md:text-[26px] lg:text-[30px] leading-[1.4] text-zinc-900">
+          <Markdown text={question.prompt} />
         </h2>
       </div>
 
