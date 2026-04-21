@@ -35,8 +35,8 @@ export default function App() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-10">
-            <div className="hidden md:flex gap-8">
+          <div className="flex items-center gap-4 lg:gap-10">
+            <div className="hidden lg:flex gap-8">
               <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                 <Activity size={14} /> LATENCY: 0.2ms
               </div>

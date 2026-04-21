@@ -56,7 +56,7 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 - `src/lib/gemini.ts` — `generateQuestion({ apiKey, type, difficulty, concepts, topic })` calls `gemini-1.5-flash` with `responseMimeType: 'application/json'`, parses, and runs the result through a typed shape check (`shapeCoding` / `shapeMCQ`). Coding questions also execute their `schemaSql` + `expectedSql` through `runCoding` — if the model emits non-SQLite syntax (TOP, DATEADD, CONCAT) the validation fails and we retry up to 3 times before surfacing the error to the user. Generated questions get a fresh id like `gen-<base36-ts>-<rand>` and `source: 'generated'`.
 - `src/lib/generated.ts` — `useGenerated()` is a live `onSnapshot` of `users/{uid}/generated`, ordered by server `createdAt` desc. `saveGenerated(uid, q)` writes the full Question payload as `{ question, createdAt }`. `deleteGenerated(uid, id)` removes a single doc. Both emit syncStatus.
 - `src/questions/all.ts` — `useAllQuestions()` returns `[...generated, ...seed]`. Home and Practice import this instead of `seedQuestions` directly so generated questions appear in the grid, are filterable, and are routable.
-- `src/components/GenerateModal.tsx` — opened from the nav `GENERATE` button (signed-in only). Top section: Gemini API key input with show/hide + save (placeholder text directs the user to `aistudio.google.com/app/apikey`). Bottom section: type / difficulty / concept-chips / optional topic, plus a single `GENERATE` button that runs `generateQuestion` → `saveGenerated` → navigate to the new question. Errors render inline in a red banner.
+- `src/components/GenerateModal.tsx` — opened from the nav `GENERATE` button (signed-in only). Top section: Gemini API key input with show/hide + save (placeholder text directs the user to `aistudio.google.com/app/apikey`). Bottom section: type / difficulty / concept-chips / optional topic, plus a single `GENERATE` button that runs `generateQuestion` and renders the result in an in-modal **preview panel** (title + badges + prompt + collapsible schema/expectedSql for coding, or options with the correct one marked for MCQ). From there the user picks `SAVE` (→ `saveGenerated` → navigate to the new question) or `DISCARD` (→ back to the form with params intact). Errors render inline in a red banner.
 - `src/pages/Home.tsx` — generated questions get a blue `GEN` badge, faint blue card tint, and a hover trash icon (calls `deleteGenerated` after `confirm()`). Progress bar denominators now use `allQuestions.length` so adding a question grows the total.
 - `src/pages/Practice.tsx` — looks up the question via `useAllQuestions()` so generated ids resolve.
 
@@ -70,6 +70,13 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 - Env template in `.env.example`; TypeScript types for `import.meta.env` in `src/vite-env.d.ts`.
 - `src/lib/syncStatus.ts` — tiny `useSyncExternalStore`-backed store for the last progress-sync event (`idle | pending | ok | error`). `recordAttempt` emits on each write; `SyncIndicator` in the nav renders `SYNC: OK` / `SYNC: <err>` with a hover title for the full message. Added after a debugging session where permission-denied rule errors and ad-blocker `ERR_BLOCKED_BY_CLIENT` failures were silently swallowed by `console.warn`; now the UI surfaces them in real time.
 - `firebase.ts` logs once at startup in dev (`[firebase] configured — project=… authDomain=…`) so env-not-loaded is obvious in the console.
+
+**Responsive polish pass** — Done (post-M3).
+- Hero title + subtitle no longer use `whitespace-nowrap`, so both wrap on narrow viewports.
+- Nav metric chips (`LATENCY` / `CORE` / `SyncIndicator`) moved from `md:flex` to `lg:flex` — the nav no longer overflows on tablet (768px). Logo + `GENERATE` + `SIGN_IN` is all that shows below `lg`.
+- Home filter row uses `md:flex-wrap` so the status segmented control wraps to a second line instead of getting clipped at tablet widths.
+- `main.tsx` — opted into `v7_startTransition` + `v7_relativeSplatPath` on `<BrowserRouter>` to silence React Router future-flag warnings.
+- `progress.ts` — removed the two `console.warn` lines for "not configured" / "not signed in"; those states are already surfaced in the nav via `SyncIndicator`, no need for log spam.
 
 **Milestone 1: scaffold + seed + styled UI** — Done. Local dev works (`npm run dev`), 10 seed questions, coding + MCQ flows functional, brutalist theme applied across Home / CodingQuiz / MultipleChoice, Home has search + filter chips + dense card grid.
 

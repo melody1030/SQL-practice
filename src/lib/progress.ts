@@ -66,9 +66,6 @@ export async function recordAttempt(
   prevAttempts: number,
 ): Promise<void> {
   if (!firebaseConfigured) {
-    console.warn(
-      '[progress] skipped: Firebase not configured — populate .env.local and restart `npm run dev`',
-    );
     setSyncStatus({
       kind: 'error',
       questionId,
@@ -78,7 +75,6 @@ export async function recordAttempt(
     return;
   }
   if (!uid) {
-    console.warn('[progress] skipped: not signed in (SIGN_IN in nav)');
     setSyncStatus({
       kind: 'error',
       questionId,
