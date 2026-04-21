@@ -240,6 +240,10 @@ export async function generateQuestion(opts: GenerateOpts): Promise<Question> {
     } catch (err) {
       lastErr = err;
       console.warn(`[gemini] attempt ${attempt} failed:`, err);
+      // Don't retry quota / auth errors — they won't fix themselves and
+      // each retry burns more of the (already exhausted) free-tier budget.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/\b(429|403|401)\b/.test(msg) || /quota|rate/i.test(msg)) break;
     }
   }
   throw lastErr instanceof Error
