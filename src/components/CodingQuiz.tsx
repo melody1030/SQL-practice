@@ -212,12 +212,13 @@ export default function CodingQuiz({
           </div>
         </div>
 
-        {/* Output pane — fixed height, internal scroll */}
-        <div className="h-[38%] border-t-2 border-zinc-950 bg-white flex flex-col min-h-0">
+        {/* Output pane — fixed height, internal scroll. Padded to align
+            with the editor box's left/right gutters above. */}
+        <div className="h-[38%] border-t-2 border-zinc-950 bg-stone-100/50 px-8 lg:px-10 py-6 lg:py-8 flex flex-col min-h-0">
           {success ? (
             <SuccessBanner rows={rows} onNext={onExit} />
           ) : (
-            <div className="flex flex-col h-full px-8 lg:px-10 py-6 lg:py-8 min-h-0">
+            <div className="flex flex-col h-full min-h-0 bg-white border-2 border-zinc-950 px-6 py-5">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">
                   RUNTIME_OUTPUT
@@ -253,9 +254,9 @@ function SuccessBanner({
   onNext: () => void;
 }) {
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="h-full flex flex-col min-h-0 border-2 border-zinc-950 overflow-hidden">
       {/* Header — the only green part */}
-      <div className="bg-emerald-600 text-stone-50 px-8 lg:px-10 py-4 flex items-center justify-between shrink-0 animate-slide-up">
+      <div className="bg-emerald-600 text-stone-50 px-6 py-4 flex items-center justify-between shrink-0 animate-slide-up">
         <div className="flex items-center gap-4">
           <div className="h-11 w-11 bg-stone-50 text-emerald-600 flex items-center justify-center rounded-full animate-check-pop animate-success-ring">
             <Trophy size={20} strokeWidth={2.5} />
@@ -277,7 +278,7 @@ function SuccessBanner({
         </button>
       </div>
       {/* Result table — plain white, black text */}
-      <div className="flex-1 bg-white overflow-auto px-8 lg:px-10 py-4 min-h-0">
+      <div className="flex-1 bg-white overflow-auto px-6 py-4 min-h-0">
         <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-3">
           RUNTIME_OUTPUT
         </div>
