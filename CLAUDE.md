@@ -51,6 +51,15 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 
 ## Current milestone
 
+**Milestone 3: Gemini question generation** — Done.
+- `src/lib/settings.ts` — `useSettings()` reads/writes `users/{uid}/settings/app`. Single field today: `geminiKey`. `saveGeminiKey()` emits to syncStatus so a permission-denied surfaces in the nav.
+- `src/lib/gemini.ts` — `generateQuestion({ apiKey, type, difficulty, concepts, topic })` calls `gemini-1.5-flash` with `responseMimeType: 'application/json'`, parses, and runs the result through a typed shape check (`shapeCoding` / `shapeMCQ`). Coding questions also execute their `schemaSql` + `expectedSql` through `runCoding` — if the model emits non-SQLite syntax (TOP, DATEADD, CONCAT) the validation fails and we retry up to 3 times before surfacing the error to the user. Generated questions get a fresh id like `gen-<base36-ts>-<rand>` and `source: 'generated'`.
+- `src/lib/generated.ts` — `useGenerated()` is a live `onSnapshot` of `users/{uid}/generated`, ordered by server `createdAt` desc. `saveGenerated(uid, q)` writes the full Question payload as `{ question, createdAt }`. `deleteGenerated(uid, id)` removes a single doc. Both emit syncStatus.
+- `src/questions/all.ts` — `useAllQuestions()` returns `[...generated, ...seed]`. Home and Practice import this instead of `seedQuestions` directly so generated questions appear in the grid, are filterable, and are routable.
+- `src/components/GenerateModal.tsx` — opened from the nav `GENERATE` button (signed-in only). Top section: Gemini API key input with show/hide + save (placeholder text directs the user to `aistudio.google.com/app/apikey`). Bottom section: type / difficulty / concept-chips / optional topic, plus a single `GENERATE` button that runs `generateQuestion` → `saveGenerated` → navigate to the new question. Errors render inline in a red banner.
+- `src/pages/Home.tsx` — generated questions get a blue `GEN` badge, faint blue card tint, and a hover trash icon (calls `deleteGenerated` after `confirm()`). Progress bar denominators now use `allQuestions.length` so adding a question grows the total.
+- `src/pages/Practice.tsx` — looks up the question via `useAllQuestions()` so generated ids resolve.
+
 **Milestone 2: Firebase Auth + progress sync** — Done.
 - `src/lib/firebase.ts` — singleton init gated by `firebaseConfigured` (true when `VITE_FIREBASE_API_KEY` + `VITE_FIREBASE_PROJECT_ID` are set). Safe to import even when env is missing; `getFirebase()` throws only if called.
 - `src/lib/auth.tsx` — `<AuthProvider>` + `useAuth()`, Google popup sign-in, `onAuthStateChanged` subscription. Wraps the tree in `main.tsx` above `<BrowserRouter>`.
@@ -66,7 +75,6 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 
 ## Next milestones
 
-3. Gemini question generation — user enters API key in Settings, stored in Firestore (`users/{uid}/settings.geminiKey`). Generated questions validated by running their `schemaSql` + `expectedSql` through `runCoding` before being added to the pool, then persisted to `users/{uid}/generated/{id}`.
 4. Firebase Hosting deploy — wire `npm run deploy`, confirm env-var injection at build time, publish.
 
 ## Firestore rules (to configure in Firebase console)

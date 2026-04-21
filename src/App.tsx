@@ -1,4 +1,5 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, Route, Routes, useNavigate } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -7,9 +8,11 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import Home from './pages/Home';
 import Practice from './pages/Practice';
+import GenerateModal from './components/GenerateModal';
 import { useAuth } from './lib/auth';
 import { useSyncStatus } from './lib/syncStatus';
 
@@ -42,6 +45,7 @@ export default function App() {
               </div>
               <SyncIndicator />
             </div>
+            <GenerateButton />
             <AuthButton />
           </div>
         </div>
@@ -70,6 +74,31 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function GenerateButton() {
+  const { user, configured } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  if (!configured || !user) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Generate a new question with Gemini"
+        className="flex items-center gap-2 border-2 border-zinc-950 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-zinc-950 hover:text-stone-50 transition-colors"
+      >
+        <Sparkles size={12} /> GENERATE
+      </button>
+      <GenerateModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onGenerated={(q) => navigate(`/practice/${q.id}`)}
+      />
+    </>
   );
 }
 

@@ -6,10 +6,14 @@ import {
   Code2,
   HelpCircle,
   Search,
+  Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
-import { seedQuestions } from '../questions/seed';
 import TechnicalBadge from '../components/TechnicalBadge';
+import { useAllQuestions } from '../questions/all';
+import { useAuth } from '../lib/auth';
+import { deleteGenerated } from '../lib/generated';
 import { useProgress, type ProgressMap } from '../lib/progress';
 import type { Concept, Difficulty, Question } from '../questions/schema';
 
@@ -24,6 +28,8 @@ export default function Home() {
   const [conceptFilter, setConceptFilter] = useState<Concept | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const progress = useProgress();
+  const { user } = useAuth();
+  const allQuestions = useAllQuestions();
   const solvedCount = useMemo(
     () => Object.values(progress).filter((p) => p.status === 'solved').length,
     [progress],
@@ -31,13 +37,13 @@ export default function Home() {
 
   const conceptsInUse = useMemo(() => {
     const set = new Set<Concept>();
-    seedQuestions.forEach((q) => q.concepts.forEach((c) => set.add(c)));
+    allQuestions.forEach((q) => q.concepts.forEach((c) => set.add(c)));
     return Array.from(set);
-  }, []);
+  }, [allQuestions]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return seedQuestions.filter((item) => {
+    return allQuestions.filter((item) => {
       if (typeFilter !== 'all' && item.type !== typeFilter) return false;
       if (diffFilter !== 'all' && item.difficulty !== diffFilter) return false;
       if (conceptFilter !== 'all' && !item.concepts.includes(conceptFilter))
@@ -59,9 +65,9 @@ export default function Home() {
       }
       return true;
     });
-  }, [query, typeFilter, diffFilter, conceptFilter, statusFilter, progress]);
+  }, [query, typeFilter, diffFilter, conceptFilter, statusFilter, progress, allQuestions]);
 
-  const total = seedQuestions.length;
+  const total = allQuestions.length;
   const shown = filtered.length;
   const hasActiveFilter =
     query !== '' ||
@@ -230,7 +236,20 @@ export default function Home() {
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 border-t-2 border-l-2 border-zinc-950">
             {filtered.map((q, i) => (
-              <QuestionCard key={q.id} q={q} index={i} progress={progress} />
+              <QuestionCard
+                key={q.id}
+                q={q}
+                index={i}
+                progress={progress}
+                onDelete={
+                  q.source === 'generated' && user
+                    ? async () => {
+                        if (!confirm(`Delete generated question "${q.title}"?`)) return;
+                        await deleteGenerated(user.uid, q.id);
+                      }
+                    : undefined
+                }
+              />
             ))}
           </ul>
         )}
@@ -243,21 +262,37 @@ function QuestionCard({
   q,
   index,
   progress,
+  onDelete,
 }: {
   q: Question;
   index: number;
   progress: ProgressMap;
+  onDelete?: () => void | Promise<void>;
 }) {
   const Icon = q.type === 'coding' ? Code2 : HelpCircle;
   const entry = progress[q.id];
   const solved = entry?.status === 'solved';
   const attempted = !!entry && !solved;
+  const generated = q.source === 'generated';
   return (
     <li
-      className={`border-r-2 border-b-2 border-zinc-950 ${
-        solved ? 'bg-emerald-50' : 'bg-stone-50'
+      className={`relative border-r-2 border-b-2 border-zinc-950 ${
+        solved ? 'bg-emerald-50' : generated ? 'bg-blue-50/40' : 'bg-stone-50'
       }`}
     >
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void onDelete();
+          }}
+          title="Delete generated question"
+          className="absolute top-2 right-2 z-10 p-1.5 text-zinc-400 hover:text-red-600 hover:bg-white border border-transparent hover:border-zinc-950"
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
       <Link
         to={`/practice/${q.id}`}
         className="group flex flex-col h-full p-5 lg:p-6 hover:bg-white transition-colors"
@@ -270,6 +305,11 @@ function QuestionCard({
             <span>[{String(index + 1).padStart(2, '0')}]</span>
           </div>
           <div className="flex items-center gap-2">
+            {generated && (
+              <span className="inline-flex items-center gap-1 bg-blue-700 text-stone-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                <Sparkles size={10} /> GEN
+              </span>
+            )}
             {solved && (
               <span className="inline-flex items-center gap-1 bg-emerald-600 text-stone-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
                 <Check size={10} strokeWidth={4} /> DONE
