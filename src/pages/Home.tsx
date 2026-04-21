@@ -288,7 +288,7 @@ function QuestionCard({
             void onDelete();
           }}
           title="Delete generated question"
-          className="absolute bottom-2 right-2 z-10 p-1.5 text-zinc-400 hover:text-red-600 hover:bg-white border border-transparent hover:border-zinc-950"
+          className="absolute bottom-5 right-5 lg:bottom-6 lg:right-6 z-10 text-zinc-400 hover:text-red-600"
         >
           <Trash2 size={12} />
         </button>
