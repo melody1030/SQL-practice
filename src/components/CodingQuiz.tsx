@@ -11,6 +11,8 @@ import {
 import TechnicalBadge from './TechnicalBadge';
 import Markdown from './Markdown';
 import SchemaTable from './SchemaTable';
+import { useAuth } from '../lib/auth';
+import { mergeStatus, recordAttempt, useProgress } from '../lib/progress';
 import type { CodingQuestion } from '../questions/schema';
 
 export default function CodingQuiz({
@@ -25,6 +27,8 @@ export default function CodingQuiz({
   const [running, setRunning] = useState(false);
   const [tables, setTables] = useState<TablePreview[]>([]);
   const [showSchemaSql, setShowSchemaSql] = useState(false);
+  const { user } = useAuth();
+  const progress = useProgress();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +50,26 @@ export default function CodingQuiz({
     );
     setOutcome(r);
     setRunning(false);
+
+    // Record the attempt. Silent no-op when signed out or Firebase unconfigured.
+    const passed = !!(r.ok && r.match);
+    const prev = progress[question.id];
+    const nextStatus = mergeStatus(
+      prev?.status,
+      passed ? 'solved' : r.ok ? 'wrong' : 'attempted',
+    );
+    try {
+      await recordAttempt(
+        user?.uid,
+        question.id,
+        nextStatus,
+        code,
+        prev?.attempts ?? 0,
+      );
+    } catch (err) {
+      // Non-fatal — progress sync should never block practice.
+      console.warn('recordAttempt failed', err);
+    }
   }
 
   const success = !!(outcome?.ok && outcome.match);
@@ -100,8 +124,8 @@ export default function CodingQuiz({
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-2">
                 BRIEFING
               </div>
-              <p className="font-serif text-[22px] leading-[1.3] text-zinc-950">
-                <Markdown text={question.prompt} serif />
+              <p className="font-sans text-[17px] leading-[1.55] text-zinc-800">
+                <Markdown text={question.prompt} />
               </p>
             </div>
 
@@ -188,60 +212,31 @@ export default function CodingQuiz({
           </div>
         </div>
 
-        {/* Output pane — fixed height, internal scroll */}
-        <div className="h-[38%] border-t-2 border-zinc-950 bg-white flex flex-col min-h-0">
+        {/* Output pane — fixed height, internal scroll. Padded to align
+            with the editor box's left/right gutters above. */}
+        <div className="h-[38%] border-t-2 border-zinc-950 bg-stone-100/50 px-8 lg:px-10 py-6 lg:py-8 flex flex-col min-h-0">
           {success ? (
             <SuccessBanner rows={rows} onNext={onExit} />
           ) : (
-            <div className="flex flex-col h-full px-8 lg:px-10 py-6 lg:py-8 min-h-0">
+            <div className="flex flex-col h-full min-h-0 bg-white border-2 border-zinc-950 px-6 py-5">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3 shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">
                   RUNTIME_OUTPUT
                 </span>
               </div>
-              <div className="flex-1 overflow-auto mt-4 min-h-0">
-                {runtimeError ? (
+              <div className="flex-1 overflow-auto mt-4 min-h-0 space-y-4">
+                {(runtimeError || mismatchError) && (
                   <div className="font-mono text-xs font-bold text-red-600 p-4 border-l-4 border-red-600 bg-red-50">
-                    {runtimeError}
+                    {runtimeError ?? mismatchError}
                   </div>
-                ) : mismatchError ? (
-                  <div className="font-mono text-xs font-bold text-red-600 p-4 border-l-4 border-red-600 bg-red-50">
-                    {mismatchError}
-                  </div>
-                ) : rows && rows.columns.length > 0 ? (
-                  <table className="w-full text-left text-[11px] font-mono border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-zinc-950">
-                        {rows.columns.map((c) => (
-                          <th
-                            key={c}
-                            className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
-                          >
-                            {c}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="font-bold text-zinc-700">
-                      {rows.rows.map((row, i) => (
-                        <tr
-                          key={i}
-                          className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
-                        >
-                          {row.map((cell, j) => (
-                            <td key={j} className="py-2 pr-6">
-                              {cell === null ? 'NULL' : String(cell)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
+                )}
+                {rows && rows.columns.length > 0 ? (
+                  <ResultTable rows={rows} />
+                ) : !runtimeError && !mismatchError ? (
                   <div className="h-full flex items-center justify-center text-zinc-200 text-[11px] font-black uppercase tracking-[0.5em] py-8">
                     [AWAITING_INPUT]
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -259,9 +254,9 @@ function SuccessBanner({
   onNext: () => void;
 }) {
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="h-full flex flex-col min-h-0 border-2 border-zinc-950 overflow-hidden">
       {/* Header — the only green part */}
-      <div className="bg-emerald-600 text-stone-50 px-8 lg:px-10 py-4 flex items-center justify-between shrink-0 animate-slide-up">
+      <div className="bg-emerald-600 text-stone-50 px-6 py-4 flex items-center justify-between shrink-0 animate-slide-up">
         <div className="flex items-center gap-4">
           <div className="h-11 w-11 bg-stone-50 text-emerald-600 flex items-center justify-center rounded-full animate-check-pop animate-success-ring">
             <Trophy size={20} strokeWidth={2.5} />
@@ -283,41 +278,45 @@ function SuccessBanner({
         </button>
       </div>
       {/* Result table — plain white, black text */}
-      <div className="flex-1 bg-white overflow-auto px-8 lg:px-10 py-4 min-h-0">
+      <div className="flex-1 bg-white overflow-auto px-6 py-4 min-h-0">
         <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-3">
           RUNTIME_OUTPUT
         </div>
-        {rows && rows.columns.length > 0 && (
-          <table className="w-full text-left text-[11px] font-mono border-collapse">
-            <thead>
-              <tr className="border-b-2 border-zinc-950">
-                {rows.columns.map((c) => (
-                  <th
-                    key={c}
-                    className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
-                  >
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="font-bold text-zinc-700">
-              {rows.rows.map((row, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
-                >
-                  {row.map((cell, j) => (
-                    <td key={j} className="py-2 pr-6">
-                      {cell === null ? 'NULL' : String(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        {rows && rows.columns.length > 0 && <ResultTable rows={rows} />}
       </div>
     </div>
+  );
+}
+
+function ResultTable({ rows }: { rows: NonNullable<RunOutcome['user']> }) {
+  return (
+    <table className="w-full text-left text-[11px] font-mono border-collapse">
+      <thead>
+        <tr className="border-b-2 border-zinc-950">
+          {rows.columns.map((c) => (
+            <th
+              key={c}
+              className="pb-2 pr-6 font-mono font-bold text-zinc-950 uppercase tracking-wider text-[10px]"
+            >
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="font-bold text-zinc-700">
+        {rows.rows.map((row, i) => (
+          <tr
+            key={i}
+            className="border-b border-zinc-100 last:border-0 hover:bg-stone-50"
+          >
+            {row.map((cell, j) => (
+              <td key={j} className="py-2 pr-6">
+                {cell === null ? 'NULL' : String(cell)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

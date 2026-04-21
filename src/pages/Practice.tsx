@@ -1,17 +1,18 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { seedQuestions } from '../questions/seed';
+import { useAllQuestions } from '../questions/all';
 import CodingQuiz from '../components/CodingQuiz';
 import MultipleChoice from '../components/MultipleChoice';
 
 export default function Practice() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const question = seedQuestions.find((q) => q.id === id);
+  const all = useAllQuestions();
+  const question = all.find((q) => q.id === id);
 
   if (!question) {
     return (
-      <div className="max-w-4xl mx-auto px-10 py-24 space-y-8">
+      <div className="px-10 py-24 space-y-8">
         <Link
           to="/"
           className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 hover:text-zinc-950 flex items-center gap-3"

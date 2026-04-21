@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { AlertCircle, Check, Trophy, X } from 'lucide-react';
 import TechnicalBadge from './TechnicalBadge';
 import Markdown from './Markdown';
+import { useAuth } from '../lib/auth';
+import { mergeStatus, recordAttempt, useProgress } from '../lib/progress';
 import type { MCQQuestion } from '../questions/schema';
 
 export default function MultipleChoice({
@@ -13,6 +15,8 @@ export default function MultipleChoice({
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const { user } = useAuth();
+  const progress = useProgress();
 
   const correct = submitted && picked === question.correctOptionId;
   const correctOpt = question.options.find(
@@ -23,10 +27,20 @@ export default function MultipleChoice({
     if (submitted) return;
     setPicked(optId);
     setSubmitted(true);
+    const passed = optId === question.correctOptionId;
+    const prev = progress[question.id];
+    const nextStatus = mergeStatus(prev?.status, passed ? 'solved' : 'wrong');
+    void recordAttempt(
+      user?.uid,
+      question.id,
+      nextStatus,
+      optId,
+      prev?.attempts ?? 0,
+    ).catch((err) => console.warn('recordAttempt failed', err));
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-10 lg:py-14 px-6 lg:px-10 space-y-10">
+    <div className="py-10 lg:py-14 px-6 lg:px-10 space-y-10">
       <button
         onClick={onExit}
         className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 hover:text-zinc-950 flex items-center gap-3 transition-colors"
@@ -44,8 +58,8 @@ export default function MultipleChoice({
             <TechnicalBadge key={c}>{c}</TechnicalBadge>
           ))}
         </div>
-        <h2 className="font-serif text-[36px] md:text-[44px] lg:text-[52px] leading-[1.05] text-zinc-950">
-          <Markdown text={question.prompt} serif />
+        <h2 className="font-sans font-bold text-[22px] md:text-[26px] lg:text-[30px] leading-[1.4] text-zinc-900">
+          <Markdown text={question.prompt} />
         </h2>
       </div>
 

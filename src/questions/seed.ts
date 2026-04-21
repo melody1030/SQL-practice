@@ -42,6 +42,50 @@ INSERT INTO orders VALUES
   (6,1,90, '2024-04-01');
 `;
 
+// Three-table shop schema for JOIN-heavy practice. Kept separate from the
+// simpler ordersSchema so joins-by-example questions can use realistic
+// customer × product × orders relationships without overloading the basic
+// orders table for beginner questions.
+//
+// Notable seeding for predictable results:
+//   - Gizmo (id=4) is never ordered → anti-join target.
+//   - Dee   (id=4) never places an order → customer-side anti-join target.
+//   - Quantities are chosen so there are no revenue ties per customer,
+//     which keeps ROW_NUMBER()/RANK() questions deterministic.
+const joinSchema = `
+CREATE TABLE customers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  country TEXT
+);
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  price INTEGER
+);
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  customer_id INTEGER,
+  product_id INTEGER,
+  qty INTEGER,
+  order_date TEXT
+);
+INSERT INTO customers VALUES
+  (1,'Ana','USA'),(2,'Ben','UK'),(3,'Cid','USA'),(4,'Dee','Canada');
+INSERT INTO products VALUES
+  (1,'Widget',   20),
+  (2,'Gadget',   50),
+  (3,'Sprocket', 10),
+  (4,'Gizmo',   100);
+INSERT INTO orders VALUES
+  (1, 1, 1,  3, '2024-01-05'),
+  (2, 1, 2,  1, '2024-02-11'),
+  (3, 2, 1,  5, '2024-01-17'),
+  (4, 3, 3, 11, '2024-03-02'),
+  (5, 3, 2,  2, '2024-03-18'),
+  (6, 1, 3,  1, '2024-04-01');
+`;
+
 export const seedQuestions: Question[] = [
   {
     id: 'q-001',
@@ -200,6 +244,447 @@ export const seedQuestions: Question[] = [
     correctOptionId: 'b',
     explanation:
       'CTEs can be named, referenced multiple times within a query, and support recursion (WITH RECURSIVE). Performance vs. a subquery depends on the engine and query — not a guarantee.',
+    source: 'seed',
+  },
+  {
+    id: 'q-011',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['SELECT'],
+    title: 'Distinct departments',
+    prompt:
+      'Return each distinct `department` in the `employees` table. Exclude any NULL department. Order alphabetically.',
+    schemaSql: employeesSchema,
+    expectedSql:
+      'SELECT DISTINCT department FROM employees WHERE department IS NOT NULL ORDER BY department;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-012',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['Aggregation'],
+    title: 'Employee headcount',
+    prompt:
+      'Return a single row with column `total` — the number of employees in the company.',
+    schemaSql: employeesSchema,
+    expectedSql: 'SELECT COUNT(*) AS total FROM employees;',
+    source: 'seed',
+  },
+  {
+    id: 'q-013',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['WHERE', 'String Functions'],
+    title: 'Names starting with A',
+    prompt:
+      'Return the `name` of every employee whose name begins with the letter **A** (case-sensitive). Use `LIKE`.',
+    schemaSql: employeesSchema,
+    expectedSql: "SELECT name FROM employees WHERE name LIKE 'A%';",
+    source: 'seed',
+  },
+  {
+    id: 'q-014',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['CASE', 'SELECT'],
+    title: 'Salary brackets',
+    prompt:
+      "For each employee return `name` and a `bracket` column: `'High'` if salary ≥ 90000, `'Mid'` if salary ≥ 60000, otherwise `'Low'`.",
+    schemaSql: employeesSchema,
+    expectedSql:
+      "SELECT name, CASE WHEN salary >= 90000 THEN 'High' WHEN salary >= 60000 THEN 'Mid' ELSE 'Low' END AS bracket FROM employees;",
+    source: 'seed',
+  },
+  {
+    id: 'q-015',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['UNION', 'WHERE'],
+    title: 'Senior or tenured',
+    prompt:
+      "Return the distinct `name` of every employee who **either** earns at least 90000 **or** was hired before `'2020-01-01'`. Use `UNION`.",
+    schemaSql: employeesSchema,
+    expectedSql:
+      "SELECT name FROM employees WHERE salary >= 90000 UNION SELECT name FROM employees WHERE hire_date < '2020-01-01';",
+    source: 'seed',
+  },
+  {
+    id: 'q-016',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'WHERE'],
+    title: 'Customers without orders',
+    prompt:
+      'Return the `name` of every customer who has **not** placed any orders. Use a `LEFT JOIN` + `IS NULL` pattern.',
+    schemaSql: ordersSchema,
+    expectedSql:
+      'SELECT c.name FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL;',
+    source: 'seed',
+  },
+  {
+    id: 'q-017',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['Date/Time', 'GROUP BY', 'Aggregation'],
+    title: 'Hires by year',
+    prompt:
+      'Return `year` (as a 4-digit text) and `hires` — the number of employees hired in that year. Sort ascending by year. Hint: `strftime(\'%Y\', hire_date)` in SQLite.',
+    schemaSql: employeesSchema,
+    expectedSql:
+      "SELECT strftime('%Y', hire_date) AS year, COUNT(*) AS hires FROM employees GROUP BY year ORDER BY year;",
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-018',
+    type: 'mcq',
+    difficulty: 'easy',
+    concepts: ['WHERE'],
+    title: 'Comparing with NULL',
+    prompt:
+      'Which predicate correctly returns rows where `department` has no value (is NULL)?',
+    options: [
+      { id: 'a', text: 'WHERE department = NULL' },
+      { id: 'b', text: 'WHERE department == NULL' },
+      { id: 'c', text: 'WHERE department IS NULL' },
+      { id: 'd', text: "WHERE department = 'NULL'" },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'NULL is not a value you compare to with `=` — `NULL = NULL` is itself NULL (unknown), so the row is filtered out. The `IS NULL` / `IS NOT NULL` operators are the only correct way to test for absence of a value.',
+    source: 'seed',
+  },
+  {
+    id: 'q-019',
+    type: 'mcq',
+    difficulty: 'medium',
+    concepts: ['GROUP BY', 'WHERE'],
+    title: 'WHERE vs HAVING',
+    prompt:
+      'Which statement best describes the difference between `WHERE` and `HAVING`?',
+    options: [
+      { id: 'a', text: 'They are interchangeable.' },
+      {
+        id: 'b',
+        text: '`WHERE` filters rows before aggregation; `HAVING` filters groups after aggregation.',
+      },
+      {
+        id: 'c',
+        text: '`HAVING` filters rows before aggregation; `WHERE` filters groups after aggregation.',
+      },
+      {
+        id: 'd',
+        text: '`HAVING` only works with `ORDER BY`.',
+      },
+    ],
+    correctOptionId: 'b',
+    explanation:
+      '`WHERE` is evaluated row-by-row before `GROUP BY` runs, so it cannot reference aggregates like `COUNT(*)`. `HAVING` is evaluated on the grouped results and is the right place for predicates like `COUNT(*) >= 2`.',
+    source: 'seed',
+  },
+  {
+    id: 'q-020',
+    type: 'mcq',
+    difficulty: 'medium',
+    concepts: ['String Functions'],
+    title: 'String concatenation in SQLite',
+    prompt:
+      "Which expression concatenates the strings `'Hello '` and `'World'` in **SQLite**?",
+    options: [
+      { id: 'a', text: "'Hello ' + 'World'" },
+      { id: 'b', text: "CONCAT('Hello ', 'World')" },
+      { id: 'c', text: "'Hello ' || 'World'" },
+      { id: 'd', text: "'Hello ' & 'World'" },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'SQLite uses the standard SQL `||` operator for string concatenation. `+` performs numeric addition (and coerces strings to 0). `CONCAT()` works in MySQL/Postgres but not SQLite.',
+    source: 'seed',
+  },
+  {
+    id: 'q-021',
+    type: 'mcq',
+    difficulty: 'easy',
+    concepts: ['SELECT'],
+    title: 'What does DISTINCT do?',
+    prompt: 'What does `SELECT DISTINCT department FROM employees;` return?',
+    options: [
+      {
+        id: 'a',
+        text: 'Every row in the table, one per employee.',
+      },
+      {
+        id: 'b',
+        text: 'Only rows where `department` is unique per employee (no duplicates across columns).',
+      },
+      {
+        id: 'c',
+        text: 'One row per unique value of `department`, collapsing duplicates.',
+      },
+      { id: 'd', text: 'A random single row.' },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      '`DISTINCT` collapses duplicate rows from the projected columns. Here that means one row per unique department. Useful for answering "what are the possible values?" without running `GROUP BY` just for de-duplication.',
+    source: 'seed',
+  },
+  {
+    id: 'q-022',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['Window Functions', 'ORDER BY'],
+    title: 'Running total of orders',
+    prompt:
+      'Return `id`, `amount`, and `running_total` — the cumulative sum of `amount` across all orders, ordered by `order_date` then `id`. Use a window function.',
+    schemaSql: ordersSchema,
+    expectedSql:
+      'SELECT id, amount, SUM(amount) OVER (ORDER BY order_date, id) AS running_total FROM orders ORDER BY order_date, id;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-023',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['CTE', 'Window Functions'],
+    title: 'Top 2 per department',
+    prompt:
+      'Return the `name`, `department`, and `salary` of the top 2 highest-paid employees **in each department**. Use a CTE with `ROW_NUMBER()`.',
+    schemaSql: employeesSchema,
+    expectedSql:
+      'WITH ranked AS (SELECT name, department, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn FROM employees) SELECT name, department, salary FROM ranked WHERE rn <= 2;',
+    source: 'seed',
+  },
+  {
+    id: 'q-024',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['Date/Time', 'GROUP BY'],
+    title: 'Orders per month',
+    prompt:
+      "Return `month` (formatted as `'YYYY-MM'`) and `orders` — the number of orders placed in that month. Sort ascending. Hint: `strftime('%Y-%m', order_date)`.",
+    schemaSql: ordersSchema,
+    expectedSql:
+      "SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS orders FROM orders GROUP BY month ORDER BY month;",
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-025',
+    type: 'mcq',
+    difficulty: 'hard',
+    concepts: ['Aggregation'],
+    title: 'COUNT(*) vs COUNT(column)',
+    prompt:
+      'A table has 10 rows. The column `department` is NULL for 3 of them. What do `COUNT(*)` and `COUNT(department)` return, in that order?',
+    options: [
+      { id: 'a', text: '10 and 10' },
+      { id: 'b', text: '10 and 7' },
+      { id: 'c', text: '7 and 7' },
+      { id: 'd', text: '7 and 10' },
+    ],
+    correctOptionId: 'b',
+    explanation:
+      '`COUNT(*)` counts every row regardless of NULLs. `COUNT(col)` counts only rows where `col IS NOT NULL` — so it skips the 3 NULLs and returns 7. This distinction matters when computing "how many have a value" vs. "how many rows total".',
+    source: 'seed',
+  },
+  {
+    id: 'q-026',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['JOIN'],
+    title: 'Order line items',
+    prompt:
+      'Return each order as `customer`, `product`, `qty` — joining `orders` with `customers` and `products`. Sort by `orders.id` ascending.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name AS customer, p.name AS product, o.qty FROM orders o JOIN customers c ON c.id = o.customer_id JOIN products p ON p.id = o.product_id ORDER BY o.id;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-027',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Revenue per product',
+    prompt:
+      "Return `product` and `revenue` — total revenue (`qty * price`) for every product. Include products with **no sales** (revenue `0`). Hint: `LEFT JOIN` + `COALESCE`.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT p.name AS product, COALESCE(SUM(o.qty * p.price), 0) AS revenue FROM products p LEFT JOIN orders o ON o.product_id = p.id GROUP BY p.id, p.name;',
+    source: 'seed',
+  },
+  {
+    id: 'q-028',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'WHERE'],
+    title: 'Products never ordered',
+    prompt:
+      'Return the `name` of every product that has never appeared in an order. Use `LEFT JOIN` + `IS NULL`.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT p.name FROM products p LEFT JOIN orders o ON o.product_id = p.id WHERE o.id IS NULL;',
+    source: 'seed',
+  },
+  {
+    id: 'q-029',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'ORDER BY'],
+    title: 'Top-spending customer',
+    prompt:
+      'Return a single row with `name` and `total_spent` (= SUM(`qty * price`)) for the customer who has spent the most overall.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name, SUM(o.qty * p.price) AS total_spent FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.id, c.name ORDER BY total_spent DESC LIMIT 1;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-030',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['JOIN', 'CTE', 'Window Functions'],
+    title: 'Favorite product per customer',
+    prompt:
+      "For every customer who has placed at least one order, return `customer`, `product`, `revenue` — the single product they've spent the most on. Resolve ties by keeping the one with the lower `products.id`.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'WITH rev AS (SELECT c.id AS cid, c.name AS customer, p.id AS pid, p.name AS product, SUM(o.qty * p.price) AS revenue FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.id, c.name, p.id, p.name), ranked AS (SELECT customer, product, revenue, ROW_NUMBER() OVER (PARTITION BY cid ORDER BY revenue DESC, pid) AS rn FROM rev) SELECT customer, product, revenue FROM ranked WHERE rn = 1;',
+    source: 'seed',
+  },
+  {
+    id: 'q-031',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN'],
+    title: 'Same-department coworkers',
+    prompt:
+      'Return every pair of employees who work in the same department, as columns `employee_a` and `employee_b`. List each pair once, with the lower `id` on the left (so use `a.id < b.id` in the join).',
+    schemaSql: employeesSchema,
+    expectedSql:
+      'SELECT a.name AS employee_a, b.name AS employee_b FROM employees a JOIN employees b ON a.department = b.department AND a.id < b.id;',
+    source: 'seed',
+  },
+  {
+    id: 'q-032',
+    type: 'mcq',
+    difficulty: 'medium',
+    concepts: ['JOIN'],
+    title: 'What a CROSS JOIN produces',
+    prompt:
+      'Table `A` has 4 rows and table `B` has 3 rows. How many rows does `SELECT * FROM A CROSS JOIN B;` return?',
+    options: [
+      { id: 'a', text: '4 — one row of A per row of B' },
+      { id: 'b', text: '7 — the larger side plus the smaller side' },
+      { id: 'c', text: '12 — every row of A paired with every row of B' },
+      { id: 'd', text: 'Depends on the ON clause' },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'A `CROSS JOIN` is the Cartesian product — every row on the left is paired with every row on the right, so 4 × 3 = 12. There is no `ON` clause; filtering is done with `WHERE` (at which point it becomes functionally equivalent to an `INNER JOIN`).',
+    source: 'seed',
+  },
+  {
+    id: 'q-033',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['JOIN', 'WHERE'],
+    title: 'Orders from USA customers',
+    prompt:
+      "Return `customer`, `product`, `qty` for every order placed by a customer whose `country` is `'USA'`. Sort by `orders.id` ascending.",
+    schemaSql: joinSchema,
+    expectedSql:
+      "SELECT c.name AS customer, p.name AS product, o.qty FROM orders o JOIN customers c ON c.id = o.customer_id JOIN products p ON p.id = o.product_id WHERE c.country = 'USA' ORDER BY o.id;",
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-034',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Order count per customer',
+    prompt:
+      'Return `name` and `order_count` for every customer, including customers with **zero** orders. Hint: `LEFT JOIN` and `COUNT(o.id)` (not `COUNT(*)`).',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name, COUNT(o.id) AS order_count FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name;',
+    source: 'seed',
+  },
+  {
+    id: 'q-035',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY'],
+    title: 'Repeat buyers',
+    prompt:
+      'Return the `name` of every customer who has placed **2 or more** orders.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name HAVING COUNT(o.id) >= 2;',
+    source: 'seed',
+  },
+  {
+    id: 'q-036',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Revenue by country',
+    prompt:
+      'Return `country` and `revenue` (= SUM(`qty * price`)) per customer country. Only include countries with at least one order. Sort by `revenue` descending.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.country, SUM(o.qty * p.price) AS revenue FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.country ORDER BY revenue DESC;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-037',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['JOIN', 'Subquery', 'Aggregation'],
+    title: 'Customers who bought every product they tried more than once',
+    prompt:
+      "Return the `name` of every customer whose **average** order quantity is strictly greater than `2`. Compute the average across that customer's orders only.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name HAVING AVG(o.qty) > 2;',
+    source: 'seed',
+  },
+  {
+    id: 'q-038',
+    type: 'mcq',
+    difficulty: 'hard',
+    concepts: ['JOIN'],
+    title: 'Simulating FULL OUTER JOIN',
+    prompt:
+      'SQLite historically lacked `FULL OUTER JOIN`. Which combination correctly reproduces it between tables `A` and `B` on `A.k = B.k`?',
+    options: [
+      {
+        id: 'a',
+        text: 'INNER JOIN A and B on A.k = B.k, then UNION with a CROSS JOIN.',
+      },
+      {
+        id: 'b',
+        text: 'A LEFT JOIN B on A.k = B.k UNION ALL B LEFT JOIN A on A.k = B.k.',
+      },
+      {
+        id: 'c',
+        text: 'A LEFT JOIN B on A.k = B.k UNION B LEFT JOIN A on A.k = B.k WHERE A.k IS NULL.',
+      },
+      {
+        id: 'd',
+        text: 'RIGHT JOIN A and B, then NATURAL JOIN with itself.',
+      },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'A FULL OUTER JOIN keeps every row from both sides. The standard simulation is: `A LEFT JOIN B` (everything from A, plus matches from B) UNION `B LEFT JOIN A WHERE A.k IS NULL` (the B-only rows that the first half missed). Using `UNION ALL` would duplicate the matched rows.',
     source: 'seed',
   },
 ];

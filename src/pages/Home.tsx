@@ -1,32 +1,58 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Code2, HelpCircle, Search, X } from 'lucide-react';
-import { seedQuestions } from '../questions/seed';
+import {
+  ArrowUpRight,
+  Check,
+  Code2,
+  HelpCircle,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
 import TechnicalBadge from '../components/TechnicalBadge';
+import { useAllQuestions } from '../questions/all';
+import { useAuth } from '../lib/auth';
+import { deleteGenerated } from '../lib/generated';
+import { useProgress, type ProgressMap } from '../lib/progress';
 import type { Concept, Difficulty, Question } from '../questions/schema';
 
 type TypeFilter = 'all' | 'coding' | 'mcq';
 type DiffFilter = 'all' | Difficulty;
+type StatusFilter = 'all' | 'solved' | 'unsolved';
 
 export default function Home() {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [diffFilter, setDiffFilter] = useState<DiffFilter>('all');
   const [conceptFilter, setConceptFilter] = useState<Concept | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const progress = useProgress();
+  const { user } = useAuth();
+  const allQuestions = useAllQuestions();
+  const solvedCount = useMemo(
+    () => Object.values(progress).filter((p) => p.status === 'solved').length,
+    [progress],
+  );
 
   const conceptsInUse = useMemo(() => {
     const set = new Set<Concept>();
-    seedQuestions.forEach((q) => q.concepts.forEach((c) => set.add(c)));
+    allQuestions.forEach((q) => q.concepts.forEach((c) => set.add(c)));
     return Array.from(set);
-  }, []);
+  }, [allQuestions]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return seedQuestions.filter((item) => {
+    return allQuestions.filter((item) => {
       if (typeFilter !== 'all' && item.type !== typeFilter) return false;
       if (diffFilter !== 'all' && item.difficulty !== diffFilter) return false;
       if (conceptFilter !== 'all' && !item.concepts.includes(conceptFilter))
         return false;
+      if (statusFilter !== 'all') {
+        const solved = progress[item.id]?.status === 'solved';
+        if (statusFilter === 'solved' && !solved) return false;
+        if (statusFilter === 'unsolved' && solved) return false;
+      }
       if (q) {
         const hay = (
           item.title +
@@ -39,43 +65,59 @@ export default function Home() {
       }
       return true;
     });
-  }, [query, typeFilter, diffFilter, conceptFilter]);
+  }, [query, typeFilter, diffFilter, conceptFilter, statusFilter, progress, allQuestions]);
 
-  const total = seedQuestions.length;
+  const total = allQuestions.length;
   const shown = filtered.length;
   const hasActiveFilter =
     query !== '' ||
     typeFilter !== 'all' ||
     diffFilter !== 'all' ||
-    conceptFilter !== 'all';
+    conceptFilter !== 'all' ||
+    statusFilter !== 'all';
 
   function resetFilters() {
     setQuery('');
     setTypeFilter('all');
     setDiffFilter('all');
     setConceptFilter('all');
+    setStatusFilter('all');
   }
 
   return (
     <div className="min-h-[calc(100vh-120px)]">
       {/* Hero */}
-      <div className="border-b-2 border-zinc-950 p-10 lg:p-16 space-y-8">
-        <div className="space-y-5">
+      <div className="border-b-2 border-zinc-950 px-6 lg:px-10 py-5 lg:py-6 space-y-4">
+        <div className="space-y-2">
           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-400 block">
             00 / INTRODUCTION
           </span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-none uppercase whitespace-nowrap">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-none uppercase whitespace-nowrap">
             Data Driven Fluency.
           </h2>
-          <p className="font-serif italic text-sm md:text-base lg:text-lg leading-snug text-zinc-500 whitespace-nowrap">
+          <p className="font-serif italic text-xs md:text-sm leading-snug text-zinc-500 whitespace-nowrap">
             Technical acquisition platform for relational logic. High-contrast environment. Zero visual noise.
           </p>
         </div>
 
-        <div className="pt-8 border-t border-zinc-200">
+        <div className="pt-3 border-t border-zinc-200 space-y-2">
           <div className="flex items-center gap-4">
             <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[100px]">
-              MODULES_LOADED
+              MODULES_SOLVED
+            </div>
+            <div className="h-2 bg-stone-200 flex-1 overflow-hidden">
+              <div
+                className="h-full bg-emerald-600 transition-all"
+                style={{ width: `${total > 0 ? (solvedCount / total) * 100 : 0}%` }}
+              ></div>
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 tabular-nums">
+              {solvedCount.toString().padStart(2, '0')} / {total.toString().padStart(2, '0')}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[100px]">
+              FILTER_MATCH
             </div>
             <div className="h-2 bg-stone-200 flex-1 overflow-hidden">
               <div
@@ -133,6 +175,16 @@ export default function Home() {
                 { value: 'hard', label: 'HARD' },
               ]}
             />
+
+            <SegmentedControl
+              value={statusFilter}
+              onChange={(v) => setStatusFilter(v as StatusFilter)}
+              options={[
+                { value: 'all', label: 'ALL' },
+                { value: 'unsolved', label: 'TODO' },
+                { value: 'solved', label: 'DONE' },
+              ]}
+            />
           </div>
 
           {/* Row 2: concept chips */}
@@ -182,9 +234,22 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 border-t-2 border-l-2 border-zinc-950">
+          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 border-t-2 border-l-2 border-zinc-950">
             {filtered.map((q, i) => (
-              <QuestionCard key={q.id} q={q} index={i} />
+              <QuestionCard
+                key={q.id}
+                q={q}
+                index={i}
+                progress={progress}
+                onDelete={
+                  q.source === 'generated' && user
+                    ? async () => {
+                        if (!confirm(`Delete generated question "${q.title}"?`)) return;
+                        await deleteGenerated(user.uid, q.id);
+                      }
+                    : undefined
+                }
+              />
             ))}
           </ul>
         )}
@@ -193,10 +258,41 @@ export default function Home() {
   );
 }
 
-function QuestionCard({ q, index }: { q: Question; index: number }) {
+function QuestionCard({
+  q,
+  index,
+  progress,
+  onDelete,
+}: {
+  q: Question;
+  index: number;
+  progress: ProgressMap;
+  onDelete?: () => void | Promise<void>;
+}) {
   const Icon = q.type === 'coding' ? Code2 : HelpCircle;
+  const entry = progress[q.id];
+  const solved = entry?.status === 'solved';
+  const attempted = !!entry && !solved;
+  const generated = q.source === 'generated';
   return (
-    <li className="bg-stone-50 border-r-2 border-b-2 border-zinc-950">
+    <li
+      className={`relative border-r-2 border-b-2 border-zinc-950 ${
+        solved ? 'bg-emerald-50' : generated ? 'bg-blue-50/40' : 'bg-stone-50'
+      }`}
+    >
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void onDelete();
+          }}
+          title="Delete generated question"
+          className="absolute bottom-5 right-5 lg:bottom-6 lg:right-6 z-10 text-zinc-400 hover:text-red-600"
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
       <Link
         to={`/practice/${q.id}`}
         className="group flex flex-col h-full p-5 lg:p-6 hover:bg-white transition-colors"
@@ -208,7 +304,24 @@ function QuestionCard({ q, index }: { q: Question; index: number }) {
             <span className="text-zinc-300">/</span>
             <span>[{String(index + 1).padStart(2, '0')}]</span>
           </div>
-          <TechnicalBadge type={q.difficulty}>{q.difficulty}</TechnicalBadge>
+          <div className="flex items-center gap-2">
+            {generated && (
+              <span className="inline-flex items-center gap-1 bg-blue-700 text-stone-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                <Sparkles size={10} /> GEN
+              </span>
+            )}
+            {solved && (
+              <span className="inline-flex items-center gap-1 bg-emerald-600 text-stone-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                <Check size={10} strokeWidth={4} /> DONE
+              </span>
+            )}
+            {attempted && (
+              <span className="inline-flex items-center bg-zinc-950/10 text-zinc-700 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em]">
+                ×{entry!.attempts}
+              </span>
+            )}
+            <TechnicalBadge type={q.difficulty}>{q.difficulty}</TechnicalBadge>
+          </div>
         </div>
 
         <div className="flex items-start justify-between gap-3 flex-1">
