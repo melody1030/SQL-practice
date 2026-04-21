@@ -42,6 +42,50 @@ INSERT INTO orders VALUES
   (6,1,90, '2024-04-01');
 `;
 
+// Three-table shop schema for JOIN-heavy practice. Kept separate from the
+// simpler ordersSchema so joins-by-example questions can use realistic
+// customer × product × orders relationships without overloading the basic
+// orders table for beginner questions.
+//
+// Notable seeding for predictable results:
+//   - Gizmo (id=4) is never ordered → anti-join target.
+//   - Dee   (id=4) never places an order → customer-side anti-join target.
+//   - Quantities are chosen so there are no revenue ties per customer,
+//     which keeps ROW_NUMBER()/RANK() questions deterministic.
+const joinSchema = `
+CREATE TABLE customers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  country TEXT
+);
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  price INTEGER
+);
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  customer_id INTEGER,
+  product_id INTEGER,
+  qty INTEGER,
+  order_date TEXT
+);
+INSERT INTO customers VALUES
+  (1,'Ana','USA'),(2,'Ben','UK'),(3,'Cid','USA'),(4,'Dee','Canada');
+INSERT INTO products VALUES
+  (1,'Widget',   20),
+  (2,'Gadget',   50),
+  (3,'Sprocket', 10),
+  (4,'Gizmo',   100);
+INSERT INTO orders VALUES
+  (1, 1, 1,  3, '2024-01-05'),
+  (2, 1, 2,  1, '2024-02-11'),
+  (3, 2, 1,  5, '2024-01-17'),
+  (4, 3, 3, 11, '2024-03-02'),
+  (5, 3, 2,  2, '2024-03-18'),
+  (6, 1, 3,  1, '2024-04-01');
+`;
+
 export const seedQuestions: Question[] = [
   {
     id: 'q-001',
@@ -444,6 +488,203 @@ export const seedQuestions: Question[] = [
     correctOptionId: 'b',
     explanation:
       '`COUNT(*)` counts every row regardless of NULLs. `COUNT(col)` counts only rows where `col IS NOT NULL` — so it skips the 3 NULLs and returns 7. This distinction matters when computing "how many have a value" vs. "how many rows total".',
+    source: 'seed',
+  },
+  {
+    id: 'q-026',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['JOIN'],
+    title: 'Order line items',
+    prompt:
+      'Return each order as `customer`, `product`, `qty` — joining `orders` with `customers` and `products`. Sort by `orders.id` ascending.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name AS customer, p.name AS product, o.qty FROM orders o JOIN customers c ON c.id = o.customer_id JOIN products p ON p.id = o.product_id ORDER BY o.id;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-027',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Revenue per product',
+    prompt:
+      "Return `product` and `revenue` — total revenue (`qty * price`) for every product. Include products with **no sales** (revenue `0`). Hint: `LEFT JOIN` + `COALESCE`.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT p.name AS product, COALESCE(SUM(o.qty * p.price), 0) AS revenue FROM products p LEFT JOIN orders o ON o.product_id = p.id GROUP BY p.id, p.name;',
+    source: 'seed',
+  },
+  {
+    id: 'q-028',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'WHERE'],
+    title: 'Products never ordered',
+    prompt:
+      'Return the `name` of every product that has never appeared in an order. Use `LEFT JOIN` + `IS NULL`.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT p.name FROM products p LEFT JOIN orders o ON o.product_id = p.id WHERE o.id IS NULL;',
+    source: 'seed',
+  },
+  {
+    id: 'q-029',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'ORDER BY'],
+    title: 'Top-spending customer',
+    prompt:
+      'Return a single row with `name` and `total_spent` (= SUM(`qty * price`)) for the customer who has spent the most overall.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name, SUM(o.qty * p.price) AS total_spent FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.id, c.name ORDER BY total_spent DESC LIMIT 1;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-030',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['JOIN', 'CTE', 'Window Functions'],
+    title: 'Favorite product per customer',
+    prompt:
+      "For every customer who has placed at least one order, return `customer`, `product`, `revenue` — the single product they've spent the most on. Resolve ties by keeping the one with the lower `products.id`.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'WITH rev AS (SELECT c.id AS cid, c.name AS customer, p.id AS pid, p.name AS product, SUM(o.qty * p.price) AS revenue FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.id, c.name, p.id, p.name), ranked AS (SELECT customer, product, revenue, ROW_NUMBER() OVER (PARTITION BY cid ORDER BY revenue DESC, pid) AS rn FROM rev) SELECT customer, product, revenue FROM ranked WHERE rn = 1;',
+    source: 'seed',
+  },
+  {
+    id: 'q-031',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN'],
+    title: 'Same-department coworkers',
+    prompt:
+      'Return every pair of employees who work in the same department, as columns `employee_a` and `employee_b`. List each pair once, with the lower `id` on the left (so use `a.id < b.id` in the join).',
+    schemaSql: employeesSchema,
+    expectedSql:
+      'SELECT a.name AS employee_a, b.name AS employee_b FROM employees a JOIN employees b ON a.department = b.department AND a.id < b.id;',
+    source: 'seed',
+  },
+  {
+    id: 'q-032',
+    type: 'mcq',
+    difficulty: 'medium',
+    concepts: ['JOIN'],
+    title: 'What a CROSS JOIN produces',
+    prompt:
+      'Table `A` has 4 rows and table `B` has 3 rows. How many rows does `SELECT * FROM A CROSS JOIN B;` return?',
+    options: [
+      { id: 'a', text: '4 — one row of A per row of B' },
+      { id: 'b', text: '7 — the larger side plus the smaller side' },
+      { id: 'c', text: '12 — every row of A paired with every row of B' },
+      { id: 'd', text: 'Depends on the ON clause' },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'A `CROSS JOIN` is the Cartesian product — every row on the left is paired with every row on the right, so 4 × 3 = 12. There is no `ON` clause; filtering is done with `WHERE` (at which point it becomes functionally equivalent to an `INNER JOIN`).',
+    source: 'seed',
+  },
+  {
+    id: 'q-033',
+    type: 'coding',
+    difficulty: 'easy',
+    concepts: ['JOIN', 'WHERE'],
+    title: 'Orders from USA customers',
+    prompt:
+      "Return `customer`, `product`, `qty` for every order placed by a customer whose `country` is `'USA'`. Sort by `orders.id` ascending.",
+    schemaSql: joinSchema,
+    expectedSql:
+      "SELECT c.name AS customer, p.name AS product, o.qty FROM orders o JOIN customers c ON c.id = o.customer_id JOIN products p ON p.id = o.product_id WHERE c.country = 'USA' ORDER BY o.id;",
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-034',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Order count per customer',
+    prompt:
+      'Return `name` and `order_count` for every customer, including customers with **zero** orders. Hint: `LEFT JOIN` and `COUNT(o.id)` (not `COUNT(*)`).',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name, COUNT(o.id) AS order_count FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name;',
+    source: 'seed',
+  },
+  {
+    id: 'q-035',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY'],
+    title: 'Repeat buyers',
+    prompt:
+      'Return the `name` of every customer who has placed **2 or more** orders.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name HAVING COUNT(o.id) >= 2;',
+    source: 'seed',
+  },
+  {
+    id: 'q-036',
+    type: 'coding',
+    difficulty: 'medium',
+    concepts: ['JOIN', 'GROUP BY', 'Aggregation'],
+    title: 'Revenue by country',
+    prompt:
+      'Return `country` and `revenue` (= SUM(`qty * price`)) per customer country. Only include countries with at least one order. Sort by `revenue` descending.',
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.country, SUM(o.qty * p.price) AS revenue FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id GROUP BY c.country ORDER BY revenue DESC;',
+    orderMatters: true,
+    source: 'seed',
+  },
+  {
+    id: 'q-037',
+    type: 'coding',
+    difficulty: 'hard',
+    concepts: ['JOIN', 'Subquery', 'Aggregation'],
+    title: 'Customers who bought every product they tried more than once',
+    prompt:
+      "Return the `name` of every customer whose **average** order quantity is strictly greater than `2`. Compute the average across that customer's orders only.",
+    schemaSql: joinSchema,
+    expectedSql:
+      'SELECT c.name FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id, c.name HAVING AVG(o.qty) > 2;',
+    source: 'seed',
+  },
+  {
+    id: 'q-038',
+    type: 'mcq',
+    difficulty: 'hard',
+    concepts: ['JOIN'],
+    title: 'Simulating FULL OUTER JOIN',
+    prompt:
+      'SQLite historically lacked `FULL OUTER JOIN`. Which combination correctly reproduces it between tables `A` and `B` on `A.k = B.k`?',
+    options: [
+      {
+        id: 'a',
+        text: 'INNER JOIN A and B on A.k = B.k, then UNION with a CROSS JOIN.',
+      },
+      {
+        id: 'b',
+        text: 'A LEFT JOIN B on A.k = B.k UNION ALL B LEFT JOIN A on A.k = B.k.',
+      },
+      {
+        id: 'c',
+        text: 'A LEFT JOIN B on A.k = B.k UNION B LEFT JOIN A on A.k = B.k WHERE A.k IS NULL.',
+      },
+      {
+        id: 'd',
+        text: 'RIGHT JOIN A and B, then NATURAL JOIN with itself.',
+      },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      'A FULL OUTER JOIN keeps every row from both sides. The standard simulation is: `A LEFT JOIN B` (everything from A, plus matches from B) UNION `B LEFT JOIN A WHERE A.k IS NULL` (the B-only rows that the first half missed). Using `UNION ALL` would duplicate the matched rows.',
     source: 'seed',
   },
 ];
