@@ -87,20 +87,20 @@ export default function Home() {
   return (
     <div className="min-h-[calc(100vh-120px)]">
       {/* Hero */}
-      <div className="border-b-2 border-zinc-950 p-10 lg:p-16 space-y-8">
-        <div className="space-y-5">
+      <div className="border-b-2 border-zinc-950 px-6 lg:px-10 py-5 lg:py-6 space-y-4">
+        <div className="space-y-2">
           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-400 block">
             00 / INTRODUCTION
           </span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-none uppercase whitespace-nowrap">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-none uppercase whitespace-nowrap">
             Data Driven Fluency.
           </h2>
-          <p className="font-serif italic text-sm md:text-base lg:text-lg leading-snug text-zinc-500 whitespace-nowrap">
+          <p className="font-serif italic text-xs md:text-sm leading-snug text-zinc-500 whitespace-nowrap">
             Technical acquisition platform for relational logic. High-contrast environment. Zero visual noise.
           </p>
         </div>
 
-        <div className="pt-8 border-t border-zinc-200 space-y-3">
+        <div className="pt-3 border-t border-zinc-200 space-y-2">
           <div className="flex items-center gap-4">
             <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[100px]">
               MODULES_SOLVED
