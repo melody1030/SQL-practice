@@ -12,7 +12,7 @@ export default function Practice() {
 
   if (!question) {
     return (
-      <div className="max-w-4xl mx-auto px-10 py-24 space-y-8">
+      <div className="px-10 py-24 space-y-8">
         <Link
           to="/"
           className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 hover:text-zinc-950 flex items-center gap-3"

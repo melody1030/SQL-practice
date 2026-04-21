@@ -40,7 +40,7 @@ export default function MultipleChoice({
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-10 lg:py-14 px-6 lg:px-10 space-y-10">
+    <div className="py-10 lg:py-14 px-6 lg:px-10 space-y-10">
       <button
         onClick={onExit}
         className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 hover:text-zinc-950 flex items-center gap-3 transition-colors"
