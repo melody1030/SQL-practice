@@ -234,7 +234,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 border-t-2 border-l-2 border-zinc-950">
+          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 border-t-2 border-l-2 border-zinc-950">
             {filtered.map((q, i) => (
               <QuestionCard
                 key={q.id}
