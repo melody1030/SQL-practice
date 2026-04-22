@@ -92,10 +92,10 @@ export default function Home() {
           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-400 block">
             00 / INTRODUCTION
           </span>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-none uppercase whitespace-nowrap">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-none uppercase">
             Data Driven Fluency.
           </h2>
-          <p className="font-serif italic text-xs md:text-sm leading-snug text-zinc-500 whitespace-nowrap">
+          <p className="font-serif italic text-xs md:text-sm leading-snug text-zinc-500">
             Technical acquisition platform for relational logic. High-contrast environment. Zero visual noise.
           </p>
         </div>
@@ -136,7 +136,7 @@ export default function Home() {
       <div className="sticky top-20 z-30 bg-stone-50 border-b-2 border-zinc-950">
         <div className="px-6 lg:px-10 py-4 space-y-3">
           {/* Row 1: search + type + difficulty */}
-          <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-3">
             <div className="flex items-center gap-3 flex-1 border-2 border-zinc-950 bg-white px-3 py-2">
               <Search size={14} className="text-zinc-400" />
               <input

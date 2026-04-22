@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, Save, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Save, Sparkles, Trash2, X } from 'lucide-react';
+import TechnicalBadge from './TechnicalBadge';
 import { useAuth } from '../lib/auth';
 import { useSettings } from '../lib/settings';
 import { generateQuestion } from '../lib/gemini';
@@ -43,12 +44,15 @@ export default function GenerateModal({ open, onClose, onGenerated }: Props) {
   const [topic, setTopic] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Question | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setKeyDraft(settings.geminiKey ?? '');
       setKeyMsg(null);
       setError(null);
+      setPreview(null);
     }
   }, [open, settings.geminiKey]);
 
@@ -98,14 +102,32 @@ export default function GenerateModal({ open, onClose, onGenerated }: Props) {
         concepts,
         topic: topic.trim() || undefined,
       });
-      await saveGenerated(user.uid, q);
-      onGenerated?.(q);
-      onClose();
+      setPreview(q);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onConfirmSave() {
+    if (!user || !preview) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await saveGenerated(user.uid, preview);
+      onGenerated?.(preview);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function onDiscard() {
+    setPreview(null);
+    setError(null);
   }
 
   return (
@@ -172,7 +194,16 @@ export default function GenerateModal({ open, onClose, onGenerated }: Props) {
 
           <hr className="border-zinc-200" />
 
-          {/* Generation form */}
+          {preview ? (
+            <PreviewPanel
+              question={preview}
+              saving={saving}
+              error={error}
+              onSave={onConfirmSave}
+              onDiscard={onDiscard}
+            />
+          ) : (
+          /* Generation form */
           <section className="space-y-5">
             <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
               GENERATION_PARAMS
@@ -264,9 +295,123 @@ export default function GenerateModal({ open, onClose, onGenerated }: Props) {
               </p>
             )}
           </section>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function PreviewPanel({
+  question,
+  saving,
+  error,
+  onSave,
+  onDiscard,
+}: {
+  question: Question;
+  saving: boolean;
+  error: string | null;
+  onSave: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <section className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
+          PREVIEW_GENERATED
+        </div>
+        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-700">
+          {question.type === 'coding' ? 'CODING' : 'LOGIC'}
+        </span>
+      </div>
+
+      <div className="border-2 border-zinc-950 bg-white p-5 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <TechnicalBadge type={question.difficulty}>
+            {question.difficulty}
+          </TechnicalBadge>
+          {question.concepts.map((c) => (
+            <TechnicalBadge key={c}>{c}</TechnicalBadge>
+          ))}
+        </div>
+        <h4 className="text-xl font-black tracking-tight leading-snug text-zinc-950">
+          {question.title}
+        </h4>
+        <p className="text-[13px] leading-relaxed text-zinc-700 whitespace-pre-wrap">
+          {question.prompt}
+        </p>
+
+        {question.type === 'coding' ? (
+          <details className="border border-zinc-200">
+            <summary className="cursor-pointer px-3 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
+              + SCHEMA / EXPECTED_SQL
+            </summary>
+            <pre className="font-mono text-[11px] text-blue-900 bg-blue-50 p-3 whitespace-pre-wrap overflow-auto">
+{`-- schemaSql\n${question.schemaSql.trim()}\n\n-- expectedSql\n${question.expectedSql.trim()}`}
+            </pre>
+          </details>
+        ) : (
+          <ul className="space-y-1.5">
+            {question.options.map((o) => {
+              const correct = o.id === question.correctOptionId;
+              return (
+                <li
+                  key={o.id}
+                  className={`text-[12px] px-3 py-2 border ${
+                    correct
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-bold'
+                      : 'border-zinc-200 text-zinc-700'
+                  }`}
+                >
+                  <span className="font-mono text-[10px] opacity-60 mr-2">
+                    {o.id.toUpperCase()}
+                  </span>
+                  {o.text}
+                  {correct && (
+                    <span className="ml-2 text-[9px] font-black uppercase tracking-widest">
+                      ✓ correct
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 border-2 border-red-600 bg-red-50 p-3 text-[10px] font-bold text-red-700">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span className="break-words">{error}</span>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={onDiscard}
+          disabled={saving}
+          className="flex-1 flex items-center justify-center gap-2 border-2 border-zinc-950 py-3 text-[11px] font-black uppercase tracking-[0.3em] hover:bg-zinc-950 hover:text-stone-50 disabled:opacity-30"
+        >
+          <Trash2 size={12} /> DISCARD
+        </button>
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 flex items-center justify-center gap-2 bg-zinc-950 text-stone-50 py-3 text-[11px] font-black uppercase tracking-[0.3em] hover:bg-blue-700 disabled:opacity-30"
+        >
+          {saving ? (
+            <>
+              <Loader2 size={12} className="animate-spin" /> SAVING…
+            </>
+          ) : (
+            <>
+              <Check size={12} strokeWidth={3} /> SAVE
+            </>
+          )}
+        </button>
+      </div>
+    </section>
   );
 }
 
