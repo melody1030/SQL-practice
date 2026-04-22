@@ -1,8 +1,6 @@
 # SQL Practice
 
-A browser-based SQL practice app. Coding quizzes run real SQLite in your browser via [sql.js](https://sql.js.org/); 
-
-multiple-choice questions drill SQL concepts. Progress syncs to Firestore and you can generate new practice questions with Gemini.
+A browser-based SQL practice app. Coding quizzes run real SQLite in your browser via [sql.js](https://sql.js.org/); multiple-choice questions drill SQL concepts. Progress syncs to Firestore and you can generate new practice questions with Gemini.
 
 ## Stack
 
