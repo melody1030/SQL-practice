@@ -2,6 +2,8 @@
 
 A browser-based SQL practice app. Coding quizzes run real SQLite in your browser via [sql.js](https://sql.js.org/); multiple-choice questions drill SQL concepts. Progress syncs to Firestore and you can generate new practice questions with Gemini.
 
+**Live:** https://sql-practice-451c4.web.app
+
 ## Stack
 
 - React 18 + Vite + TypeScript
@@ -29,6 +31,22 @@ npm run build
 npm run preview
 ```
 
+## Deploy
+
+Hosted on Firebase Hosting. Config lives in `firebase.json` + `.firebaserc` (project `sql-practice-451c4`). One-time:
+
+```bash
+firebase login
+```
+
+Then any time you want to publish:
+
+```bash
+npm run deploy
+```
+
+This runs `tsc -b && vite build` and pushes `dist/` to https://sql-practice-451c4.web.app. `.env.local` must be present so the `VITE_FIREBASE_*` values get baked into the bundle at build time.
+
 ## Features
 
 - **38+ seed questions** across SELECT, WHERE, ORDER BY, GROUP BY, Aggregation, JOIN, Subquery, CTE, Window Functions, UNION.
@@ -38,6 +56,3 @@ npm run preview
 - **Progress sync** — signed-in users' solve status + attempts sync live to Firestore; the nav `SyncIndicator` surfaces permission / network errors.
 - **AI question generation** — `GENERATE` button opens a modal: save your own Gemini key, pick type / difficulty / concepts / optional topic, preview the generated question in-modal, then `SAVE` or `DISCARD`. Saved questions land in the grid with a blue `GEN` badge and can be deleted from the card.
 
-## Not yet implemented
-
-- Firebase Hosting deploy (`npm run deploy`)

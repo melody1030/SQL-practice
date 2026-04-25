@@ -82,7 +82,9 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 
 ## Next milestones
 
-4. **Firebase Hosting deploy** — config wired (see below). User runs `firebase login` once, then `npm run deploy` publishes. Pending: first publish + custom-domain wiring (optional).
+(All planned milestones complete. Future ideas: more seed questions for window functions / CTEs / self-joins, custom domain on the live site, code-split Firebase out of the main chunk.)
+
+**Milestone 4: Firebase Hosting deploy** — Done. First publish on 2026-04-23 went out cleanly: `dist/` (4 files) → https://sql-practice-451c4.web.app. Config wired in `firebase.json` + `.firebaserc`; `npm run deploy` is the one-shot republish command. Custom domain not yet wired.
 
 ## Firebase Hosting
 
