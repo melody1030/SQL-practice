@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, Route, Routes, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -11,8 +11,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Home from './pages/Home';
-import Practice from './pages/Practice';
 import GenerateModal from './components/GenerateModal';
+
+// Practice carries CodeMirror + sql.js — keep it out of the Home bundle.
+const Practice = lazy(() => import('./pages/Practice'));
 import { useAuth } from './lib/auth';
 import { useSyncStatus } from './lib/syncStatus';
 
@@ -54,7 +56,14 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/practice/:id" element={<Practice />} />
+          <Route
+            path="/practice/:id"
+            element={
+              <Suspense fallback={<PracticeFallback />}>
+                <Practice />
+              </Suspense>
+            }
+          />
         </Routes>
       </main>
 
@@ -73,6 +82,20 @@ export default function App() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function PracticeFallback() {
+  return (
+    <div
+      className="flex items-center justify-center"
+      style={{ height: 'calc(100vh - 120px)' }}
+    >
+      <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">
+        <Loader2 size={14} className="animate-spin" />
+        LOADING_MODULE…
+      </div>
     </div>
   );
 }

@@ -82,7 +82,18 @@ npm run deploy     # build + firebase deploy (once Firebase is configured)
 
 ## Next milestones
 
-4. Firebase Hosting deploy — wire `npm run deploy`, confirm env-var injection at build time, publish.
+(All planned milestones complete. Future ideas: more seed questions for window functions / CTEs / self-joins, custom domain on the live site, code-split Firebase out of the main chunk.)
+
+**Milestone 4: Firebase Hosting deploy** — Done. First publish on 2026-04-23 went out cleanly: `dist/` (4 files) → https://sql-practice-451c4.web.app. Config wired in `firebase.json` + `.firebaserc`; `npm run deploy` is the one-shot republish command. Custom domain not yet wired.
+
+## Firebase Hosting
+
+- `firebase.json` — `public: dist`, SPA rewrite (`** → /index.html`), long-cache headers for hashed assets, `no-cache` for `index.html`.
+- `.firebaserc` — pins `default` to project `sql-practice-451c4`.
+- `package.json` deploy script — `npm run build && firebase deploy --only hosting` (scoped so a missing `firestore.rules`/`firestore.indexes.json` doesn't fail the deploy).
+- Firebase CLI is expected to be installed globally (`firebase --version` ≥ 13). Auth via `firebase login` (one-time per machine).
+- Live URLs after first deploy: `https://sql-practice-451c4.web.app` + `https://sql-practice-451c4.firebaseapp.com`. Both are pre-listed in Firebase Auth → Authorized domains, so Google sign-in works out of the box.
+- Build pulls `VITE_FIREBASE_*` from `.env.local` at build time (Vite injects at compile, not runtime), so the deploying machine must have `.env.local` populated.
 
 ## Firestore rules (to configure in Firebase console)
 
